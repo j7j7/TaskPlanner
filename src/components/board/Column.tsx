@@ -177,7 +177,7 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                 className={`cursor-pointer hover:text-accent transition-colors ${canWrite ? '' : 'cursor-default'}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  canWrite && setIsEditing(true);
+                  if (canWrite) setIsEditing(true);
                 }}
               >
                 {column.title}
@@ -271,34 +271,6 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
           </div>
         </div>
 
-        {isAddingCard && (
-          <form onSubmit={handleAddCard} className="p-3 border-t border-border bg-surfaceLight/50">
-            <input
-              type="text"
-              value={newCardTitle}
-              onChange={(e) => setNewCardTitle(e.target.value)}
-              placeholder="Enter card title..."
-              className="input text-sm py-2 mb-2"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="btn btn-primary text-xs py-1.5 px-3">
-                Add
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddingCard(false);
-                  setNewCardTitle('');
-                }}
-                className="btn btn-ghost text-xs py-1.5 px-3"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-
         <div
           className={`flex-1 overflow-y-auto p-3 space-y-3 min-h-0 scrollbar-thin ${isRotated ? 'overflow-x-auto overflow-y-hidden' : ''}`}
           onDoubleClick={() => canWrite && setIsAddingCard(true)}
@@ -339,8 +311,8 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
             </div>
           </SortableContext>
 
-          {canWrite && isAddingCard ? (
-            <form onSubmit={handleAddCard} className="space-y-2">
+          {canWrite && isAddingCard && (
+            <form onSubmit={handleAddCard} className="space-y-2 mt-2">
               <input
                 type="text"
                 value={newCardTitle}
@@ -355,14 +327,17 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsAddingCard(false)}
+                  onClick={() => {
+                    setIsAddingCard(false);
+                    setNewCardTitle('');
+                  }}
                   className="btn btn-ghost text-xs py-1.5 px-3"
                 >
                   Cancel
                 </button>
               </div>
             </form>
-          ) : null}
+          )}
         </div>
       </div>
 

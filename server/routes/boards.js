@@ -1,5 +1,5 @@
 import express from 'express';
-import { boardsDb, labelsDb } from '../store.js';
+import { boardsDb, labelsDb, usersDb } from '../store.js';
 import { getSession } from '../auth.js';
 
 const router = express.Router();
@@ -25,6 +25,10 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function canAccessBoard(board, userId) {
+  return board.userId === userId || (board.sharedWith && board.sharedWith.includes(userId));
+}
+
 router.get('/', requireAuth, (req, res) => {
   try {
     const boards = boardsDb.findByUserId(req.userId);
@@ -48,6 +52,7 @@ router.post('/', requireAuth, (req, res) => {
       userId: req.userId,
       title: title.trim(),
       columns: [],
+      sharedWith: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -68,7 +73,7 @@ router.get('/:id', requireAuth, (req, res) => {
       return res.status(404).json({ error: 'Board not found' });
     }
 
-    if (board.userId !== req.userId) {
+    if (!canAccessBoard(board, req.userId)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -122,6 +127,159 @@ router.delete('/:id', requireAuth, (req, res) => {
   } catch (error) {
     console.error('Delete board error:', error);
     res.status(500).json({ error: 'Failed to delete board' });
+  }
+});
+
+router.post('/:id/share', requireAuth, (req, res) => {
+  try {
+    const board = boardsDb.findById(req.params.id);
+
+    if (!board) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (board.userId !== req.userId) {
+      return res.status(403).json({ error: 'Only the owner can share this board' });
+    }
+
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const user = usersDb.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updated = boardsDb.shareBoard(req.params.id, userId);
+    res.json({ board: updated });
+  } catch (error) {
+    console.error('Share board error:', error);
+    res.status(500).json({ error: 'Failed to share board' });
+  }
+});
+
+router.delete('/:id/share/:userId', requireAuth, (req, res) => {
+  try {
+    const board = boardsDb.findById(req.params.id);
+
+    if (!board) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (board.userId !== req.userId) {
+      return res.status(403).json({ error: 'Only the owner can unshare this board' });
+    }
+
+    const updated = boardsDb.unshareBoard(req.params.id, req.params.userId);
+    res.json({ board: updated });
+  } catch (error) {
+    console.error('Unshare board error:', error);
+    res.status(500).json({ error: 'Failed to unshare board' });
+  }
+});
+
+router.post('/:id/columns/:columnId/share', requireAuth, (req, res) => {
+  try {
+    const board = boardsDb.findById(req.params.id);
+
+    if (!board) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (!canAccessBoard(board, req.userId)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const user = usersDb.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updated = boardsDb.shareColumn(req.params.id, req.params.columnId, userId);
+    res.json({ board: updated });
+  } catch (error) {
+    console.error('Share column error:', error);
+    res.status(500).json({ error: 'Failed to share column' });
+  }
+});
+
+router.delete('/:id/columns/:columnId/share/:userId', requireAuth, (req, res) => {
+  try {
+    const board = boardsDb.findById(req.params.id);
+
+    if (!board) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (!canAccessBoard(board, req.userId)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const updated = boardsDb.unshareColumn(req.params.id, req.params.columnId, req.params.userId);
+    res.json({ board: updated });
+  } catch (error) {
+    console.error('Unshare column error:', error);
+    res.status(500).json({ error: 'Failed to unshare column' });
+  }
+});
+
+router.post('/:id/columns/:columnId/cards/:cardId/share', requireAuth, (req, res) => {
+  try {
+    const board = boardsDb.findById(req.params.id);
+
+    if (!board) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (!canAccessBoard(board, req.userId)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const user = usersDb.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updated = boardsDb.shareCard(req.params.id, req.params.columnId, req.params.cardId, userId);
+    res.json({ board: updated });
+  } catch (error) {
+    console.error('Share card error:', error);
+    res.status(500).json({ error: 'Failed to share card' });
+  }
+});
+
+router.delete('/:id/columns/:columnId/cards/:cardId/share/:userId', requireAuth, (req, res) => {
+  try {
+    const board = boardsDb.findById(req.params.id);
+
+    if (!board) {
+      return res.status(404).json({ error: 'Board not found' });
+    }
+
+    if (!canAccessBoard(board, req.userId)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const updated = boardsDb.unshareCard(req.params.id, req.params.columnId, req.params.cardId, req.params.userId);
+    res.json({ board: updated });
+  } catch (error) {
+    console.error('Unshare card error:', error);
+    res.status(500).json({ error: 'Failed to unshare card' });
   }
 });
 

@@ -6,6 +6,7 @@ import type { Board } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { UserSelector } from '../ui/UserSelector';
 
 function getBoardColor(boardId: string): string {
   const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
@@ -18,7 +19,7 @@ function getBoardColor(boardId: string): string {
 
 export function Sidebar() {
   const { user, logout } = useAuth();
-  const { boards, currentBoard, fetchBoards, createBoard, updateBoard, deleteBoard } = useBoardStore();
+  const { boards, currentBoard, fetchBoards, createBoard, updateBoard, deleteBoard, users, fetchUsers, shareBoard, unshareBoard } = useBoardStore();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -28,11 +29,13 @@ export function Sidebar() {
   const [importError, setImportError] = useState('');
   const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
   const [editingBoardTitle, setEditingBoardTitle] = useState('');
+  const [sharingBoardId, setSharingBoardId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchBoards();
-  }, [fetchBoards]);
+    fetchUsers();
+  }, [fetchBoards, fetchUsers]);
 
   const handleLogout = async () => {
     await logout();
@@ -93,6 +96,22 @@ export function Sidebar() {
     } else if (e.key === 'Escape') {
       handleCancelEdit();
     }
+  };
+
+  const handleOpenShare = (boardId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSharingBoardId(boardId);
+  };
+
+  const handleShare = async (userId: string) => {
+    if (sharingBoardId) {
+      await shareBoard(sharingBoardId, userId);
+    }
+  };
+
+  const handleUnshare = async (boardId: string, userId: string) => {
+    await unshareBoard(boardId, userId);
   };
 
   const handleExport = () => {
@@ -277,12 +296,29 @@ export function Sidebar() {
               ) : (
                 <Link
                   to={`/board/${board.id}`}
-                  className="flex-1 truncate font-medium"
+                  className="flex-1 truncate font-medium flex items-center gap-2"
                 >
-                  {board.title}
+                  <div
+                    className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: getBoardColor(board.id) }}
+                  >
+                    <span className="text-background text-xs font-bold">
+                      {(board.title || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="truncate">{board.title}</span>
                 </Link>
               )}
               <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => handleOpenShare(board.id, e)}
+                  className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
+                  title="Share board"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                </button>
                 <button
                   onClick={(e) => handleStartEdit(board, e)}
                   className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
@@ -405,6 +441,15 @@ export function Sidebar() {
           </div>
         </div>
       </Modal>
+
+      <UserSelector
+        isOpen={!!sharingBoardId}
+        onClose={() => setSharingBoardId(null)}
+        onSelectUser={handleShare}
+        title="Share Board"
+        selectedUserIds={boards.find(b => b.id === sharingBoardId)?.sharedWith || []}
+        mode="manage"
+      />
     </aside>
   );
 }

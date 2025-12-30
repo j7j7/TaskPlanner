@@ -22,5 +22,17 @@
     "username": "testuser11053",
     "passwordHash": "$2b$10$XPcS/f50G.mNHAx0zic/gul2U5C2djP1/z6wceFGV57bnowLfEufK",
     "createdAt": "2025-12-30T03:27:28.146Z"
+  },
+  {
+    "id": "9bac0e1b-5ab6-4b26-b166-6edb1cfd15f7",
+    "username": "j8",
+    "passwordHash": "$2b$10$TRq.ik5tBlbOVd1W9T8rluFecvU50WSOD.3YUtOFRtA1Q4fFwk5PS",
+    "createdAt": "2025-12-30T04:31:22.133Z"
+  },
+  {
+    "id": "a074aae6-b9e3-4a77-95cf-318946d35c98",
+    "username": "J7",
+    "passwordHash": "$2b$10$37SHvJMgZTk8BA2xgYG5KeDT0BjArcoo2.67rUYWHkdmOZFxAiqY.",
+    "createdAt": "2025-12-30T05:00:50.604Z"
   }
 ]

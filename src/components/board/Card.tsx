@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Card as CardType, Label } from '../../types';
 import { CardModal } from './CardModal';
+import { useBoardStore } from '../../store/useBoardStore';
+import { useAuth } from '../../hooks/useAuth';
+import { UserSelector } from '../ui/UserSelector';
 
 interface CardProps {
   card: CardType;
   labels: Label[];
+}
+
+function getUserColor(userId: string): string {
+  const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 }
 
 export function Card({ card, labels }: CardProps) {
@@ -13,6 +25,15 @@ export function Card({ card, labels }: CardProps) {
     id: card.id,
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const { users, fetchUsers, currentBoard, shareCard, unshareCard } = useBoardStore();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (isShareModalOpen) {
+      fetchUsers();
+    }
+  }, [isShareModalOpen, fetchUsers]);
 
   const cardLabels = labels.filter((l) => card.labels.includes(l.id));
 
@@ -23,6 +44,29 @@ export function Card({ card, labels }: CardProps) {
     urgent: '#ef4444',
   };
 
+  const isOwner = card.userId === user?.id;
+  const sharedUserIds = card.sharedWith || [];
+  const allUserIds = [card.userId, ...sharedUserIds].filter(Boolean);
+  const ownerUser = users.find(u => u.id === card.userId);
+
+  const handleShare = async (userId: string) => {
+    if (currentBoard) {
+      const column = currentBoard.columns.find(col => col.cards.some(c => c.id === card.id));
+      if (column) {
+        await shareCard(currentBoard.id, column.id, card.id, userId);
+      }
+    }
+  };
+
+  const handleRemoveSharedUser = async (userId: string) => {
+    if (currentBoard) {
+      const column = currentBoard.columns.find(col => col.cards.some(c => c.id === card.id));
+      if (column) {
+        await unshareCard(currentBoard.id, column.id, card.id, userId);
+      }
+    }
+  };
+
   return (
     <>
       <div
@@ -30,7 +74,14 @@ export function Card({ card, labels }: CardProps) {
         {...attributes}
         {...listeners}
         className={`task-card group ${isDragging ? 'dragging' : ''}`}
-        onClick={() => setIsModalOpen(true)}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('.share-btn')) {
+            e.stopPropagation();
+            setIsShareModalOpen(true);
+          } else {
+            setIsModalOpen(true);
+          }
+        }}
       >
         <div
           className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
@@ -38,9 +89,19 @@ export function Card({ card, labels }: CardProps) {
         />
 
         <div className="pl-3">
-          <h4 className="font-medium text-text text-sm mb-2 leading-snug">
-            {card.title}
-          </h4>
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h4 className="font-medium text-text text-sm leading-snug flex-1">
+              {card.title}
+            </h4>
+            <button
+              className="share-btn opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-opacity p-0.5"
+              title="Share card"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </button>
+          </div>
 
           {card.description && (
             <p className="text-xs text-textMuted mb-2 line-clamp-2">
@@ -48,7 +109,7 @@ export function Card({ card, labels }: CardProps) {
             </p>
           )}
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex flex-wrap gap-1">
               {cardLabels.map((label) => (
                 <span
@@ -65,15 +126,60 @@ export function Card({ card, labels }: CardProps) {
               ))}
             </div>
 
-            {card.dueDate && (
-              <span className="text-[10px] text-textMuted font-mono bg-surface px-1.5 py-0.5 rounded">
-                {new Date(card.dueDate).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </span>
-            )}
+            <div className="flex items-center gap-1">
+              {allUserIds.slice(0, 3).map((userId, index) => {
+                const u = users.find(x => x.id === userId);
+                const isShared = index > 0;
+                const canRemove = isShared && isOwner;
+                return (
+                  <div
+                    key={userId}
+                    className={`relative ${index > 0 ? '-ml-1' : ''}`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center border border-surface ${
+                        isShared ? 'ring-1 ring-accent' : ''
+                      }`}
+                      style={{ backgroundColor: getUserColor(userId || 'unknown') }}
+                      title={u?.username || 'Unknown'}
+                    >
+                      <span className="text-[10px] text-background font-bold">
+                        {(u?.username || '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    {canRemove && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveSharedUser(userId);
+                        }}
+                        className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-danger rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                      >
+                        <svg className="w-1.5 h-1.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+
+              {allUserIds.length > 3 && (
+                <div className="w-5 h-5 rounded-full bg-surfaceLight flex items-center justify-center -ml-1 text-[10px] text-textMuted">
+                  +{allUserIds.length - 3}
+                </div>
+              )}
+            </div>
           </div>
+
+          {card.dueDate && (
+            <span className="text-[10px] text-textMuted font-mono bg-surface px-1.5 py-0.5 rounded mt-2 inline-block">
+              {new Date(card.dueDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -82,6 +188,15 @@ export function Card({ card, labels }: CardProps) {
         onClose={() => setIsModalOpen(false)}
         card={card}
         labels={labels}
+      />
+
+      <UserSelector
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        onSelectUser={handleShare}
+        title="Share Card"
+        selectedUserIds={sharedUserIds}
+        mode="manage"
       />
     </>
   );

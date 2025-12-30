@@ -23,6 +23,8 @@ export interface Card {
   order: number;
   createdAt: string;
   updatedAt: string;
+  userId: string;
+  sharedWith: string[];
 }
 
 export interface Column {
@@ -31,6 +33,8 @@ export interface Column {
   color: string;
   order: number;
   cards: Card[];
+  userId: string;
+  sharedWith: string[];
 }
 
 export interface Board {
@@ -40,6 +44,7 @@ export interface Board {
   columns: Column[];
   createdAt: string;
   updatedAt: string;
+  sharedWith: string[];
 }
 
 export interface ApiError {
@@ -61,6 +66,10 @@ export interface BoardsResponse {
 export interface BoardResponse {
   board: Board;
   labels: Label[];
+}
+
+export interface UsersResponse {
+  users: User[];
 }
 
 export interface LabelResponse {

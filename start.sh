@@ -16,6 +16,11 @@ sleep 2
 echo "✅ Services stopped"
 
 echo ""
+echo "🧹 Clearing Vite cache..."
+rm -rf node_modules/.vite 2>/dev/null
+echo "✅ Cache cleared"
+
+echo ""
 echo "🚀 Starting backend server..."
 cd "$(dirname "$0")"
 node server/index.js &

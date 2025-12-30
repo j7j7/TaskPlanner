@@ -44,6 +44,10 @@ export const api = {
     me: () =>
       request<{ user: import('../types').User }>('/auth/me'),
   },
+  users: {
+    getAll: () =>
+      request<{ users: import('../types').User[] }>('/users'),
+  },
   boards: {
     getAll: () =>
       request<{ boards: import('../types').Board[] }>('/boards'),
@@ -63,6 +67,33 @@ export const api = {
       }),
     delete: (id: string) =>
       request<{ success: boolean }>(`/boards/${id}`, {
+        method: 'DELETE',
+      }),
+    share: (boardId: string, userId: string) =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/share`, {
+        method: 'POST',
+        body: JSON.stringify({ userId }),
+      }),
+    unshare: (boardId: string, userId: string) =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/share/${userId}`, {
+        method: 'DELETE',
+      }),
+    shareColumn: (boardId: string, columnId: string, userId: string) =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/share`, {
+        method: 'POST',
+        body: JSON.stringify({ userId }),
+      }),
+    unshareColumn: (boardId: string, columnId: string, userId: string) =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/share/${userId}`, {
+        method: 'DELETE',
+      }),
+    shareCard: (boardId: string, columnId: string, cardId: string, userId: string) =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/cards/${cardId}/share`, {
+        method: 'POST',
+        body: JSON.stringify({ userId }),
+      }),
+    unshareCard: (boardId: string, columnId: string, cardId: string, userId: string) =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/cards/${cardId}/share/${userId}`, {
         method: 'DELETE',
       }),
   },

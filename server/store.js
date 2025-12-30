@@ -47,9 +47,11 @@ function ensureBoardStructure(board) {
   return {
     ...board,
     title: board.title || 'Untitled Board',
-    columns: board.columns || [],
+    columns: (board.columns || []).map(ensureColumnStructure),
     createdAt: board.createdAt || new Date().toISOString(),
     updatedAt: board.updatedAt || new Date().toISOString(),
+    userId: board.userId || null,
+    sharedWith: board.sharedWith || [],
   };
 }
 
@@ -59,7 +61,9 @@ function ensureColumnStructure(column) {
     title: column.title || 'Untitled Column',
     color: column.color || '#6b7280',
     order: column.order || 0,
-    cards: column.cards || [],
+    cards: (column.cards || []).map(ensureCardStructure),
+    userId: column.userId || null,
+    sharedWith: column.sharedWith || [],
   };
 }
 
@@ -73,7 +77,29 @@ function ensureCardStructure(card) {
     order: card.order || 0,
     createdAt: card.createdAt || new Date().toISOString(),
     updatedAt: card.updatedAt || new Date().toISOString(),
+    userId: card.userId || null,
+    sharedWith: card.sharedWith || [],
   };
+}
+
+function migrateBoards(boards) {
+  if (!Array.isArray(boards)) return [];
+  
+  return boards.map(board => ({
+    ...board,
+    userId: board.userId || null,
+    sharedWith: board.sharedWith || [],
+    columns: (board.columns || []).map(column => ({
+      ...column,
+      userId: column.userId || board.userId,
+      sharedWith: column.sharedWith || [],
+      cards: (column.cards || []).map(card => ({
+        ...card,
+        userId: card.userId || column.userId || board.userId,
+        sharedWith: card.sharedWith || [],
+      })),
+    })),
+  }));
 }
 
 export const usersDb = {
@@ -86,6 +112,10 @@ export const usersDb = {
   findById: (id) => {
     const users = readJson('users.json') || [];
     return users.find(u => u.id === id);
+  },
+  findManyById: (ids) => {
+    const users = readJson('users.json') || [];
+    return users.filter(u => ids.includes(u.id));
   },
   create: (user) => {
     const users = readJson('users.json') || [];
@@ -118,12 +148,14 @@ export const sessionsDb = {
 export const boardsDb = {
   getAll: () => {
     const boards = readJson('boards.json') || [];
-    return boards.map(ensureBoardStructure);
+    const migrated = migrateBoards(boards);
+    return migrated.map(ensureBoardStructure);
   },
   setAll: (boards) => writeJson('boards.json', boards),
   findById: (id) => {
     const boards = readJson('boards.json') || [];
-    const board = boards.find(b => b.id === id);
+    const migrated = migrateBoards(boards);
+    const board = migrated.find(b => b.id === id);
     if (board) {
       return ensureBoardStructure(board);
     }
@@ -131,8 +163,9 @@ export const boardsDb = {
   },
   findByUserId: (userId) => {
     const boards = readJson('boards.json') || [];
-    return boards
-      .filter(b => b.userId === userId)
+    const migrated = migrateBoards(boards);
+    return migrated
+      .filter(b => b.userId === userId || (b.sharedWith && b.sharedWith.includes(userId)))
       .map(ensureBoardStructure);
   },
   create: (board) => {
@@ -169,6 +202,114 @@ export const boardsDb = {
     const boards = readJson('boards.json') || [];
     const filtered = boards.filter(b => b.id !== id);
     writeJson('boards.json', filtered);
+  },
+  shareBoard: (boardId, userId) => {
+    const boards = readJson('boards.json') || [];
+    const index = boards.findIndex(b => b.id === boardId);
+    if (index !== -1) {
+      const board = ensureBoardStructure(boards[index]);
+      if (!board.sharedWith.includes(userId)) {
+        board.sharedWith.push(userId);
+        board.updatedAt = new Date().toISOString();
+        boards[index] = board;
+        writeJson('boards.json', boards);
+      }
+      return board;
+    }
+    return null;
+  },
+  unshareBoard: (boardId, userId) => {
+    const boards = readJson('boards.json') || [];
+    const index = boards.findIndex(b => b.id === boardId);
+    if (index !== -1) {
+      const board = ensureBoardStructure(boards[index]);
+      board.sharedWith = board.sharedWith.filter(id => id !== userId);
+      board.updatedAt = new Date().toISOString();
+      boards[index] = board;
+      writeJson('boards.json', boards);
+      return board;
+    }
+    return null;
+  },
+  shareColumn: (boardId, columnId, userId) => {
+    const boards = readJson('boards.json') || [];
+    const index = boards.findIndex(b => b.id === boardId);
+    if (index !== -1) {
+      const board = ensureBoardStructure(boards[index]);
+      const columnIndex = board.columns.findIndex(c => c.id === columnId);
+      if (columnIndex !== -1) {
+        const column = board.columns[columnIndex];
+        if (!column.sharedWith.includes(userId)) {
+          column.sharedWith.push(userId);
+          board.updatedAt = new Date().toISOString();
+          boards[index] = board;
+          writeJson('boards.json', boards);
+        }
+      }
+      return board;
+    }
+    return null;
+  },
+  unshareColumn: (boardId, columnId, userId) => {
+    const boards = readJson('boards.json') || [];
+    const index = boards.findIndex(b => b.id === boardId);
+    if (index !== -1) {
+      const board = ensureBoardStructure(boards[index]);
+      const columnIndex = board.columns.findIndex(c => c.id === columnId);
+      if (columnIndex !== -1) {
+        const column = board.columns[columnIndex];
+        column.sharedWith = column.sharedWith.filter(id => id !== userId);
+        board.updatedAt = new Date().toISOString();
+        boards[index] = board;
+        writeJson('boards.json', boards);
+      }
+      return board;
+    }
+    return null;
+  },
+  shareCard: (boardId, columnId, cardId, userId) => {
+    const boards = readJson('boards.json') || [];
+    const index = boards.findIndex(b => b.id === boardId);
+    if (index !== -1) {
+      const board = ensureBoardStructure(boards[index]);
+      const columnIndex = board.columns.findIndex(c => c.id === columnId);
+      if (columnIndex !== -1) {
+        const column = board.columns[columnIndex];
+        const cardIndex = column.cards.findIndex(c => c.id === cardId);
+        if (cardIndex !== -1) {
+          const card = column.cards[cardIndex];
+          if (!card.sharedWith.includes(userId)) {
+            card.sharedWith.push(userId);
+            board.updatedAt = new Date().toISOString();
+            boards[index] = board;
+            writeJson('boards.json', boards);
+          }
+        }
+      }
+      return board;
+    }
+    return null;
+  },
+  unshareCard: (boardId, columnId, cardId, userId) => {
+    const boards = readJson('boards.json') || [];
+    const index = boards.findIndex(b => b.id === boardId);
+    if (index !== -1) {
+      const board = ensureBoardStructure(boards[index]);
+      const columnIndex = board.columns.findIndex(c => c.id === columnId);
+      if (columnIndex !== -1) {
+        const column = board.columns[columnIndex];
+        const cardIndex = column.cards.findIndex(c => c.id === cardId);
+        if (cardIndex !== -1) {
+          const card = column.cards[cardIndex];
+          card.sharedWith = card.sharedWith.filter(id => id !== userId);
+          board.updatedAt = new Date().toISOString();
+          boards[index] = board;
+          writeJson('boards.json', boards);
+        }
+      }
+      return board;
+    }
+    return null;
   },
 };
 

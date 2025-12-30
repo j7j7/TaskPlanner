@@ -8,7 +8,7 @@ import { useState } from 'react';
 
 export function BoardPage() {
   const { id } = useParams<{ id: string }>();
-  const { currentBoard, fetchBoard, fetchLabels, createColumn, error, clearError, clearCurrentBoard, isLoading } = useBoardStore();
+  const { currentBoard, fetchBoard, fetchLabels, fetchUsers, createColumn, error, clearError, clearCurrentBoard, isLoading } = useBoardStore();
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [newColumnColor, setNewColumnColor] = useState('#3b82f6');
@@ -19,12 +19,13 @@ export function BoardPage() {
       clearCurrentBoard();
       fetchBoard(id);
       fetchLabels();
+      fetchUsers();
     }
     
     return () => {
       clearCurrentBoard();
     };
-  }, [id, fetchBoard, fetchLabels, clearCurrentBoard]);
+  }, [id, fetchBoard, fetchLabels, fetchUsers, clearCurrentBoard]);
 
   const handleAddColumn = async (e: React.FormEvent) => {
     e.preventDefault();

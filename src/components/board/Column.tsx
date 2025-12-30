@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Column as ColumnType, SharedUser } from '../../types';
 import { Card } from './Card';
 import { useBoardStore, useLabels } from '../../store/useBoardStore';
@@ -13,6 +13,7 @@ interface ColumnProps {
   column: ColumnType;
   dragOverId?: string | null;
   activeCardId?: string | null;
+  isRotated?: boolean;
 }
 
 function getUserColor(userId: string): string {
@@ -24,7 +25,7 @@ function getUserColor(userId: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
+export function Column({ column, dragOverId, activeCardId, isRotated = false }: ColumnProps) {
   const { createCard, deleteColumn, updateColumn, users, fetchUsers, currentBoard, shareColumn, unshareColumn } = useBoardStore();
   const { user } = useAuth();
   const { labels: allLabels } = useLabels();
@@ -142,9 +143,9 @@ export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
       <div
         ref={setNodeRef}
         style={style}
-        className={`board-column flex flex-col h-full max-h-full transition-all duration-200 shrink-0 sm:shrink w-full sm:w-72 max-w-full ${
+        className={`board-column flex flex-col h-full max-h-full transition-all duration-200 shrink-0 sm:shrink w-full max-w-full ${
           isOver ? 'border-accent bg-surfaceLight/50 drag-over' : ''
-        } ${isDragging ? 'opacity-50' : ''}`}
+        } ${isDragging ? 'opacity-50' : ''} ${isRotated ? 'min-h-[180px]' : 'sm:w-72'}`}
       >
         <div
           {...attributes}
@@ -179,6 +180,18 @@ export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
               <span className="text-xs text-textMuted font-mono bg-surfaceLight px-2 py-0.5 rounded-full">
                 {column.cards.length}
               </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAddingCard(true);
+                }}
+                className="text-textMuted hover:text-accent transition-colors p-1"
+                title="Add card"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -251,42 +264,72 @@ export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
           </div>
         </div>
 
+        {isAddingCard && (
+          <form onSubmit={handleAddCard} className="p-3 border-t border-border bg-surfaceLight/50">
+            <input
+              type="text"
+              value={newCardTitle}
+              onChange={(e) => setNewCardTitle(e.target.value)}
+              placeholder="Enter card title..."
+              className="input text-sm py-2 mb-2"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button type="submit" className="btn btn-primary text-xs py-1.5 px-3">
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingCard(false);
+                  setNewCardTitle('');
+                }}
+                className="btn btn-ghost text-xs py-1.5 px-3"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
         <div
-          className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0 scrollbar-thin"
+          className={`flex-1 overflow-y-auto p-3 space-y-3 min-h-0 scrollbar-thin ${isRotated ? 'overflow-x-auto overflow-y-hidden' : ''}`}
           onDoubleClick={() => canWrite && setIsAddingCard(true)}
         >
           <SortableContext
             items={column.cards.map((card) => card.id)}
-            strategy={verticalListSortingStrategy}
+            strategy={isRotated ? horizontalListSortingStrategy : verticalListSortingStrategy}
           >
-            {column.cards.map((card, index) => {
-              const isOver = dragOverId === card.id && activeCardId !== card.id;
-              
-              // Find the active card's position
-              const activeCardIndex = activeCardId 
-                ? column.cards.findIndex((c) => c.id === activeCardId)
-                : -1;
-              
-              // Show placeholder above if dragging down, or below if dragging up
-              const shouldShowPlaceholderAbove = isOver && activeCardIndex !== -1 && activeCardIndex < index;
-              const shouldShowPlaceholderBelow = isOver && activeCardIndex !== -1 && activeCardIndex > index;
-              
-              return (
-                <div key={card.id}>
-                  {shouldShowPlaceholderAbove && (
-                    <div className="h-2 mx-2 mb-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
-                  )}
-                  <Card
-                    card={card}
-                    labels={labels}
-                    isDragOver={isOver}
-                  />
-                  {shouldShowPlaceholderBelow && (
-                    <div className="h-2 mx-2 mt-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
-                  )}
-                </div>
-              );
-            })}
+            <div className={`${isRotated ? 'flex flex-row gap-3 h-full' : 'flex flex-col'}`}>
+              {column.cards.map((card, index) => {
+                const isOver = dragOverId === card.id && activeCardId !== card.id;
+                
+                // Find the active card's position
+                const activeCardIndex = activeCardId 
+                  ? column.cards.findIndex((c) => c.id === activeCardId)
+                  : -1;
+                
+                // Show placeholder above if dragging down, or below if dragging up
+                const shouldShowPlaceholderAbove = isOver && activeCardIndex !== -1 && activeCardIndex < index;
+                const shouldShowPlaceholderBelow = isOver && activeCardIndex !== -1 && activeCardIndex > index;
+                
+                return (
+                  <div key={card.id} className={isRotated ? 'shrink-0' : ''}>
+                    {shouldShowPlaceholderAbove && (
+                      <div className="h-2 mx-2 mb-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
+                    )}
+                    <Card
+                      card={card}
+                      labels={labels}
+                      isDragOver={isOver}
+                    />
+                    {shouldShowPlaceholderBelow && (
+                      <div className="h-2 mx-2 mt-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </SortableContext>
 
           {canWrite && isAddingCard ? (
@@ -316,7 +359,7 @@ export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
         </div>
 
         {!canWrite || !isAddingCard ? (
-          <div className="p-3 border-t border-border flex-shrink-0">
+          <div className={`p-3 border-t border-border flex-shrink-0 ${isRotated ? 'hidden' : ''}`}>
             <button
               onClick={() => setIsAddingCard(true)}
               className="w-full flex items-center justify-center gap-2 py-2 text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all text-sm font-display"

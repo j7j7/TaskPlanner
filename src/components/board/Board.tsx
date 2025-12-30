@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { DndContext, type DragEndEvent, type DragOverEvent, DragOverlay, type DragStartEvent, rectIntersection, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Column } from './Column';
 import type { Card as CardType } from '../../types';
 import { useBoardStore } from '../../store/useBoardStore';
 
-export function Board() {
+export function Board({ isRotated = false }: { isRotated?: boolean }) {
   const { currentBoard, moveCard, moveColumn } = useBoardStore();
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
@@ -152,13 +152,13 @@ export function Board() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 h-full min-h-0 overflow-auto">
+      <div className={`flex gap-3 sm:gap-4 md:gap-6 h-full min-h-0 overflow-auto ${isRotated ? 'flex-col' : 'flex-col sm:flex-row'}`}>
         <SortableContext
           items={columnIds}
-          strategy={horizontalListSortingStrategy}
+          strategy={isRotated ? verticalListSortingStrategy : horizontalListSortingStrategy}
         >
           {columns.map((column) => (
-            <Column key={column.id} column={column} dragOverId={overId} activeCardId={activeCard?.id || null} />
+            <Column key={column.id} column={column} dragOverId={overId} activeCardId={activeCard?.id || null} isRotated={isRotated} />
           ))}
         </SortableContext>
       </div>

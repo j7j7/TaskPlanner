@@ -16,13 +16,14 @@ function getUserColor(userId: string): string {
 
 export function BoardPage() {
   const { id } = useParams<{ id: string }>();
-  const { createColumn, setCurrentBoard, clearCurrentBoard, currentBoard } = useBoardStore();
+  const { createColumn, setCurrentBoard, clearCurrentBoard } = useBoardStore();
   const { board, isLoading, error } = useBoard(id || '');
   const { users } = useUsers();
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [newColumnColor, setNewColumnColor] = useState('#3b82f6');
   const [isCreating, setIsCreating] = useState(false);
+  const [isRotated, setIsRotated] = useState(false);
   const prevBoardIdRef = useRef<string | null>(null);
   const prevUpdatedAtRef = useRef<string | null>(null);
 
@@ -115,22 +116,32 @@ export function BoardPage() {
             )}
           </div>
 
-          <button
-            onClick={() => setIsAddColumnModalOpen(true)}
-            className="btn btn-primary shrink-0"
-          >
-            <svg className="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span className="hidden sm:inline">Add Column</span>
-            <span className="sm:hidden">Add</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsAddColumnModalOpen(true)}
+              className="p-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
+              title="Add Column"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setIsRotated(!isRotated)}
+              className={`p-2 rounded-lg border border-border hover:bg-surface transition-colors ${isRotated ? 'bg-accent/10 text-accent' : 'text-textMuted'}`}
+              title={isRotated ? 'Switch to columns view' : 'Switch to rows view'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="flex-1 overflow-auto p-3 sm:p-6">
         {board ? (
-          <Board />
+          <Board isRotated={isRotated} />
         ) : isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-4">

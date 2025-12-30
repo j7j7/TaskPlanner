@@ -7,10 +7,20 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
+function getBoardColor(boardId: string): string {
+  const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+  let hash = 0;
+  for (let i = 0; i < boardId.length; i++) {
+    hash = boardId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 export function Sidebar() {
   const { user, logout } = useAuth();
   const { boards, currentBoard, fetchBoards, createBoard, updateBoard, deleteBoard } = useBoardStore();
   const navigate = useNavigate();
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -134,9 +144,63 @@ export function Sidebar() {
     }
   };
 
+  if (isCollapsed) {
+    return (
+      <aside className="w-16 bg-surface border-r border-border flex flex-col h-screen shrink-0">
+        <div className="p-3 border-b border-border flex justify-center">
+          <button
+            onClick={() => setIsCollapsed(false)}
+            className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity"
+            title="Expand sidebar"
+          >
+            <svg className="w-5 h-5 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          <div className="space-y-2">
+            {boards.map((board) => (
+              <Link
+                key={board.id}
+                to={`/board/${board.id}`}
+                className={`block w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                  currentBoard?.id === board.id
+                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface'
+                    : 'hover:opacity-80'
+                }`}
+                style={{ backgroundColor: getBoardColor(board.id) }}
+                title={board.title || 'Untitled'}
+              >
+                <span className="text-background font-display font-bold text-sm">
+                  {(board.title || 'U').charAt(0).toUpperCase()}
+                </span>
+              </Link>
+            ))}
+
+            {boards.length === 0 && (
+              <p className="text-xs text-textMuted text-center py-4">
+                No boards
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-3 border-t border-border flex justify-center">
+          <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
+            <span className="text-accent font-display font-medium text-sm">
+              {user?.username?.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
   return (
-        <aside className="w-56 md:w-64 bg-surface border-r border-border flex flex-col h-screen shrink-0">
-      <div className="p-6 border-b border-border">
+    <aside className="w-56 md:w-64 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-all duration-300">
+      <div className="p-6 border-b border-border flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
             <span className="text-background font-display font-bold text-xl">T</span>
@@ -146,6 +210,15 @@ export function Sidebar() {
             <p className="text-xs text-textMuted font-mono">Task Manager</p>
           </div>
         </Link>
+        <button
+          onClick={() => setIsCollapsed(true)}
+          className="text-textMuted hover:text-text transition-colors p-1"
+          title="Collapse sidebar"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">

@@ -31,6 +31,17 @@ interface BoardState {
   updateLabel: (id: string, data: Partial<Label>) => Promise<void>;
   deleteLabel: (id: string) => Promise<void>;
   clearError: () => void;
+  clearCurrentBoard: () => void;
+}
+
+function ensureColumns(board: Board): Board {
+  return {
+    ...board,
+    columns: board.columns?.map(col => ({
+      ...col,
+      cards: col.cards || [],
+    })) || [],
+  };
 }
 
 export const useBoardStore = create<BoardState>((set, get) => ({
@@ -44,7 +55,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { boards } = await api.boards.getAll();
-      set({ boards, isLoading: false });
+      const normalizedBoards = boards.map(ensureColumns);
+      set({ boards: normalizedBoards, isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
@@ -54,7 +66,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { board, labels } = await api.boards.get(id);
-      set({ currentBoard: board, labels, isLoading: false });
+      const normalizedBoard = ensureColumns(board);
+      
+      set((state) => {
+        const existingBoardIndex = state.boards.findIndex(b => b.id === id);
+        const newBoards = [...state.boards];
+        
+        if (existingBoardIndex !== -1) {
+          newBoards[existingBoardIndex] = normalizedBoard;
+        } else {
+          newBoards.push(normalizedBoard);
+        }
+        
+        return {
+          currentBoard: normalizedBoard,
+          labels,
+          boards: newBoards,
+          isLoading: false,
+        };
+      });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
@@ -72,8 +102,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   createBoard: async (title: string) => {
     try {
       const { board } = await api.boards.create(title);
-      set((state) => ({ boards: [...state.boards, board] }));
-      return board;
+      const normalizedBoard = ensureColumns(board);
+      set((state) => ({ 
+        boards: [...state.boards, normalizedBoard],
+        currentBoard: normalizedBoard,
+      }));
+      return normalizedBoard;
     } catch (error) {
       set({ error: (error as Error).message });
       return null;
@@ -83,14 +117,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   updateBoard: async (id: string, data: Partial<Board>) => {
     try {
       const { board } = await api.boards.update(id, data);
+      const normalizedBoard = ensureColumns(board);
+      
       set((state) => ({
-        boards: state.boards.map((b) => (b.id === id ? board : b)),
-        currentBoard: state.currentBoard?.id === id 
-          ? { ...board, columns: board.columns ?? state.currentBoard.columns }
-          : state.currentBoard,
+        boards: state.boards.map((b) => (b.id === id ? normalizedBoard : b)),
+        currentBoard: state.currentBoard?.id === id ? normalizedBoard : state.currentBoard,
       }));
     } catch (error) {
       set({ error: (error as Error).message });
+      throw error;
     }
   },
 
@@ -103,6 +138,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: (error as Error).message });
+      throw error;
     }
   },
 
@@ -110,7 +146,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = board.columns ?? [];
+    const columns = board.columns || [];
     const newColumn: Column = {
       id: generateShortId(),
       title,
@@ -119,19 +155,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       cards: [],
     };
 
-    const updatedBoard = {
-      ...board,
-      columns: [...columns, newColumn],
-      updatedAt: new Date().toISOString(),
-    };
-
-    set({ currentBoard: updatedBoard });
+    const updatedColumns = [...columns, newColumn];
 
     try {
-      await api.boards.update(board.id, { columns: updatedBoard.columns });
+      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
+      const normalizedBoard = ensureColumns(updatedBoard);
+      
+      set((state) => ({
+        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+        currentBoard: normalizedBoard,
+      }));
     } catch (error) {
       set({ error: (error as Error).message });
-      get().fetchBoard(board.id);
+      throw error;
     }
   },
 
@@ -139,19 +175,22 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = board.columns ?? [];
+    const columns = board.columns || [];
     const updatedColumns = columns.map((col) =>
       col.id === columnId ? { ...col, ...updates } : col
     );
 
-    const updatedBoard = { ...board, columns: updatedColumns, updatedAt: new Date().toISOString() };
-    set({ currentBoard: updatedBoard });
-
     try {
-      await api.boards.update(board.id, { columns: updatedColumns });
+      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
+      const normalizedBoard = ensureColumns(updatedBoard);
+      
+      set((state) => ({
+        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+        currentBoard: normalizedBoard,
+      }));
     } catch (error) {
       set({ error: (error as Error).message });
-      get().fetchBoard(board.id);
+      throw error;
     }
   },
 
@@ -159,17 +198,20 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = board.columns ?? [];
+    const columns = board.columns || [];
     const updatedColumns = columns.filter((col) => col.id !== columnId);
 
-    const updatedBoard = { ...board, columns: updatedColumns, updatedAt: new Date().toISOString() };
-    set({ currentBoard: updatedBoard });
-
     try {
-      await api.boards.update(board.id, { columns: updatedColumns });
+      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
+      const normalizedBoard = ensureColumns(updatedBoard);
+      
+      set((state) => ({
+        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+        currentBoard: normalizedBoard,
+      }));
     } catch (error) {
       set({ error: (error as Error).message });
-      get().fetchBoard(board.id);
+      throw error;
     }
   },
 
@@ -177,7 +219,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = board.columns ?? [];
+    const columns = board.columns || [];
     const newCard: Card = {
       id: generateShortId(),
       columnId,
@@ -191,18 +233,21 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     const updatedColumns = columns.map((col) =>
       col.id === columnId
-        ? { ...col, cards: [newCard, ...(col.cards ?? [])] }
+        ? { ...col, cards: [newCard, ...(col.cards || [])] }
         : col
     );
 
-    const updatedBoard = { ...board, columns: updatedColumns, updatedAt: new Date().toISOString() };
-    set({ currentBoard: updatedBoard });
-
     try {
-      await api.boards.update(board.id, { columns: updatedColumns });
+      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
+      const normalizedBoard = ensureColumns(updatedBoard);
+      
+      set((state) => ({
+        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+        currentBoard: normalizedBoard,
+      }));
     } catch (error) {
       set({ error: (error as Error).message });
-      get().fetchBoard(board.id);
+      throw error;
     }
   },
 
@@ -210,22 +255,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = board.columns ?? [];
+    const columns = board.columns || [];
     const updatedColumns = columns.map((col) => ({
       ...col,
-      cards: (col.cards ?? []).map((card) =>
+      cards: (col.cards || []).map((card) =>
         card.id === cardId ? { ...card, ...updates, updatedAt: new Date().toISOString() } : card
       ),
     }));
 
-    const updatedBoard = { ...board, columns: updatedColumns, updatedAt: new Date().toISOString() };
-    set({ currentBoard: updatedBoard });
-
     try {
-      await api.boards.update(board.id, { columns: updatedColumns });
+      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
+      const normalizedBoard = ensureColumns(updatedBoard);
+      
+      set((state) => ({
+        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+        currentBoard: normalizedBoard,
+      }));
     } catch (error) {
       set({ error: (error as Error).message });
-      get().fetchBoard(board.id);
+      throw error;
     }
   },
 
@@ -233,20 +281,23 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = board.columns ?? [];
+    const columns = board.columns || [];
     const updatedColumns = columns.map((col) => ({
       ...col,
-      cards: (col.cards ?? []).filter((card) => card.id !== cardId),
+      cards: (col.cards || []).filter((card) => card.id !== cardId),
     }));
 
-    const updatedBoard = { ...board, columns: updatedColumns, updatedAt: new Date().toISOString() };
-    set({ currentBoard: updatedBoard });
-
     try {
-      await api.boards.update(board.id, { columns: updatedColumns });
+      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
+      const normalizedBoard = ensureColumns(updatedBoard);
+      
+      set((state) => ({
+        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+        currentBoard: normalizedBoard,
+      }));
     } catch (error) {
       set({ error: (error as Error).message });
-      get().fetchBoard(board.id);
+      throw error;
     }
   },
 
@@ -254,12 +305,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = board.columns ?? [];
+    const columns = board.columns || [];
     let movedCard: Card | null = null;
 
     const updatedColumns = columns.map((col) => {
       if (col.id === fromColumnId) {
-        const cards = col.cards ?? [];
+        const cards = col.cards || [];
         const cardIndex = cards.findIndex((c) => c.id === cardId);
         if (cardIndex !== -1) {
           movedCard = { ...cards[cardIndex], columnId: toColumnId, order: newIndex };
@@ -276,7 +327,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     const finalColumns = updatedColumns.map((col) => {
       if (col.id === toColumnId && movedCard) {
-        const cards = col.cards ?? [];
+        const cards = col.cards || [];
         const newCards = [...cards];
         newCards.splice(newIndex, 0, movedCard);
         return { ...col, cards: newCards };
@@ -285,14 +336,24 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     });
 
     const updatedBoard = { ...board, columns: finalColumns, updatedAt: new Date().toISOString() };
-    set({ currentBoard: updatedBoard });
+    const normalizedBoard = ensureColumns(updatedBoard);
+
+    set((state) => ({
+      boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+      currentBoard: normalizedBoard,
+    }));
+
+    api.boards.update(board.id, { columns: finalColumns }).catch((error) => {
+      console.error('Failed to persist card move:', error);
+      get().fetchBoard(board.id);
+    });
   },
 
   moveColumn: (columnId: string, newIndex: number) => {
     const board = get().currentBoard;
     if (!board) return;
 
-    const columns = [...(board.columns ?? [])];
+    const columns = [...(board.columns || [])];
     const oldIndex = columns.findIndex((c) => c.id === columnId);
     if (oldIndex === -1) return;
 
@@ -301,7 +362,17 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     const updatedColumns = columns.map((col, index) => ({ ...col, order: index }));
     const updatedBoard = { ...board, columns: updatedColumns, updatedAt: new Date().toISOString() };
-    set({ currentBoard: updatedBoard });
+    const normalizedBoard = ensureColumns(updatedBoard);
+
+    set((state) => ({
+      boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
+      currentBoard: normalizedBoard,
+    }));
+
+    api.boards.update(board.id, { columns: updatedColumns }).catch((error) => {
+      console.error('Failed to persist column move:', error);
+      get().fetchBoard(board.id);
+    });
   },
 
   createLabel: async (name: string, color: string) => {
@@ -310,6 +381,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       set((state) => ({ labels: [...state.labels, label] }));
     } catch (error) {
       set({ error: (error as Error).message });
+      throw error;
     }
   },
 
@@ -321,6 +393,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: (error as Error).message });
+      throw error;
     }
   },
 
@@ -332,8 +405,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: (error as Error).message });
+      throw error;
     }
   },
 
   clearError: () => set({ error: null }),
+  
+  clearCurrentBoard: () => set({ currentBoard: null }),
 }));

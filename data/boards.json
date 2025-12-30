@@ -1,43 +1,90 @@
 [
   {
-    "id": "c19afe06-b247-4211-b7ec-5d8fe4a06e3e",
+    "id": "rwi7ziytnjyi82whnz",
     "userId": "f1c2fb8e-c049-483f-b683-35c33d83400e",
-    "title": "My Board",
-    "createdAt": "2025-12-30T03:32:00.750Z",
-    "updatedAt": "2025-12-30T04:01:42.703Z",
+    "title": "board1",
     "columns": [
       {
-        "id": "col-1767067266963",
+        "id": "jpcabpk5yd5nmw5aof",
         "title": "thinking",
         "color": "#8b5cf6",
         "order": 0,
         "cards": [
           {
-            "id": "card-1767067297966",
-            "columnId": "col-1767067266963",
-            "title": "test2",
+            "id": "uzxfs5rrcjerp043z5",
+            "columnId": "jpcabpk5yd5nmw5aof",
+            "title": "task1",
             "labels": [],
             "priority": "medium",
             "order": 0,
-            "createdAt": "2025-12-30T04:01:37.966Z",
-            "updatedAt": "2025-12-30T04:01:37.966Z"
+            "createdAt": "2025-12-30T04:20:23.235Z",
+            "updatedAt": "2025-12-30T04:20:23.235Z"
           }
         ]
       },
       {
-        "id": "col-1767067302695",
-        "title": "doing",
-        "color": "#ec4899",
+        "id": "my6ujznp7raw9kov6p",
+        "title": "in progress",
+        "color": "#f59e0b",
         "order": 1,
         "cards": []
+      },
+      {
+        "id": "2x5olr5t823mw4ltna",
+        "title": "done",
+        "color": "#22c55e",
+        "order": 2,
+        "cards": []
       }
-    ]
+    ],
+    "createdAt": "2025-12-30T04:19:42.877Z",
+    "updatedAt": "2025-12-30T04:20:23.246Z"
   },
   {
-    "id": "abumekuk5dileaiee3",
+    "id": "pkoozp01wy82jpmfoi",
     "userId": "f1c2fb8e-c049-483f-b683-35c33d83400e",
-    "title": "Side",
-    "createdAt": "2025-12-30T04:04:23.724Z",
-    "updatedAt": "2025-12-30T04:05:21.861Z"
+    "title": "side",
+    "columns": [
+      {
+        "id": "559x5lb38t12bacs6j",
+        "title": "stage1",
+        "color": "#ec4899",
+        "order": 0,
+        "cards": [
+          {
+            "id": "b3jhgwimg0frqgjb1y",
+            "columnId": "559x5lb38t12bacs6j",
+            "title": "item1",
+            "labels": [],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T04:21:19.557Z",
+            "updatedAt": "2025-12-30T04:21:19.557Z"
+          },
+          {
+            "id": "hv2h8cenlswq574bu1",
+            "columnId": "559x5lb38t12bacs6j",
+            "title": "itrm2",
+            "labels": [],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T04:21:23.327Z",
+            "updatedAt": "2025-12-30T04:21:23.327Z"
+          },
+          {
+            "id": "wnfx8xsl8g21p0l1zh",
+            "columnId": "559x5lb38t12bacs6j",
+            "title": "item3",
+            "labels": [],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T04:21:26.181Z",
+            "updatedAt": "2025-12-30T04:21:26.181Z"
+          }
+        ]
+      }
+    ],
+    "createdAt": "2025-12-30T04:20:59.180Z",
+    "updatedAt": "2025-12-30T04:21:37.898Z"
   }
 ]

@@ -43,6 +43,39 @@ function writeJson(filename, data) {
   }
 }
 
+function ensureBoardStructure(board) {
+  return {
+    ...board,
+    title: board.title || 'Untitled Board',
+    columns: board.columns || [],
+    createdAt: board.createdAt || new Date().toISOString(),
+    updatedAt: board.updatedAt || new Date().toISOString(),
+  };
+}
+
+function ensureColumnStructure(column) {
+  return {
+    ...column,
+    title: column.title || 'Untitled Column',
+    color: column.color || '#6b7280',
+    order: column.order || 0,
+    cards: column.cards || [],
+  };
+}
+
+function ensureCardStructure(card) {
+  return {
+    ...card,
+    columnId: card.columnId || '',
+    title: card.title || 'Untitled Card',
+    labels: card.labels || [],
+    priority: card.priority || 'medium',
+    order: card.order || 0,
+    createdAt: card.createdAt || new Date().toISOString(),
+    updatedAt: card.updatedAt || new Date().toISOString(),
+  };
+}
+
 export const usersDb = {
   getAll: () => readJson('users.json') || [],
   setAll: (users) => writeJson('users.json', users),
@@ -83,29 +116,52 @@ export const sessionsDb = {
 };
 
 export const boardsDb = {
-  getAll: () => readJson('boards.json') || [],
+  getAll: () => {
+    const boards = readJson('boards.json') || [];
+    return boards.map(ensureBoardStructure);
+  },
   setAll: (boards) => writeJson('boards.json', boards),
   findById: (id) => {
     const boards = readJson('boards.json') || [];
-    return boards.find(b => b.id === id);
+    const board = boards.find(b => b.id === id);
+    if (board) {
+      return ensureBoardStructure(board);
+    }
+    return null;
   },
   findByUserId: (userId) => {
     const boards = readJson('boards.json') || [];
-    return boards.filter(b => b.userId === userId);
+    return boards
+      .filter(b => b.userId === userId)
+      .map(ensureBoardStructure);
   },
   create: (board) => {
     const boards = readJson('boards.json') || [];
-    boards.push(board);
+    const newBoard = ensureBoardStructure(board);
+    boards.push(newBoard);
     writeJson('boards.json', boards);
-    return board;
+    return newBoard;
   },
   update: (id, updates) => {
     const boards = readJson('boards.json') || [];
     const index = boards.findIndex(b => b.id === id);
     if (index !== -1) {
-      boards[index] = { ...boards[index], ...updates, updatedAt: new Date().toISOString() };
+      const existingBoard = ensureBoardStructure(boards[index]);
+      const mergedBoard = { ...existingBoard };
+      
+      if (updates.title !== undefined) {
+        mergedBoard.title = updates.title;
+      }
+      
+      if (updates.columns !== undefined) {
+        mergedBoard.columns = updates.columns.map(ensureColumnStructure);
+      }
+      
+      mergedBoard.updatedAt = new Date().toISOString();
+      
+      boards[index] = mergedBoard;
       writeJson('boards.json', boards);
-      return boards[index];
+      return mergedBoard;
     }
     return null;
   },

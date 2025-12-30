@@ -13,6 +13,7 @@ interface AuthContextType {
   sendMagicCode: (email: string) => Promise<void>;
   verifyMagicCode: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUsername: (username: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -125,8 +126,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUsername = async (username: string) => {
+    if (!user) {
+      throw new Error('No user logged in');
+    }
+
+    setError(null);
+    try {
+      const timestamp = now();
+      // Update the user profile in the users entity
+      await db.transact([
+        db.tx.users[user.id].update({
+          username: username,
+          updatedAt: timestamp,
+        }),
+      ]);
+
+      // Update the local user state
+      const updatedUser: User = {
+        ...user,
+        username: username,
+      };
+      setUser(updatedUser);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update username';
+      setError(errorMessage);
+      throw err;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, sendMagicCode, verifyMagicCode, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, error, sendMagicCode, verifyMagicCode, logout, updateUsername }}>
       {children}
     </AuthContext.Provider>
   );

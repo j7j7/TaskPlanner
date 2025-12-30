@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useBoardStore, useBoards } from '../../store/useBoardStore';
 import type { Board } from '../../types';
 import { Modal } from '../ui/Modal';
@@ -18,7 +19,8 @@ function getBoardColor(boardId: string): string {
 }
 
 export function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUsername } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { currentBoard, createBoard, updateBoard, deleteBoard, shareBoard } = useBoardStore();
   const { boards } = useBoards();
   const navigate = useNavigate();
@@ -31,6 +33,9 @@ export function Sidebar() {
   const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
   const [editingBoardTitle, setEditingBoardTitle] = useState('');
   const [sharingBoardId, setSharingBoardId] = useState<string | null>(null);
+  const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
+  const [editingUsername, setEditingUsername] = useState('');
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
@@ -161,6 +166,27 @@ export function Sidebar() {
     }
   };
 
+  const handleOpenUserEdit = () => {
+    setEditingUsername(user?.username || '');
+    setIsUserEditModalOpen(true);
+  };
+
+  const handleSaveUsername = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUsername.trim() || !user) return;
+
+    setIsUpdatingUsername(true);
+    try {
+      await updateUsername(editingUsername.trim());
+      setIsUserEditModalOpen(false);
+      setEditingUsername('');
+    } catch (error) {
+      console.error('Failed to update username:', error);
+    } finally {
+      setIsUpdatingUsername(false);
+    }
+  };
+
   if (isCollapsed) {
     return (
       <aside className="w-16 bg-surface border-r border-border flex flex-col h-screen shrink-0">
@@ -204,12 +230,31 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="p-3 border-t border-border flex justify-center">
-          <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
+        <div className="p-3 border-t border-border flex flex-col items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="w-10 h-10 bg-surfaceLight rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <svg className="w-5 h-5 text-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={handleOpenUserEdit}
+            className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
+            title="Edit profile"
+          >
             <span className="text-accent font-display font-medium text-sm">
               {user?.username?.charAt(0).toUpperCase()}
             </span>
-          </div>
+          </button>
         </div>
       </aside>
     );
@@ -348,14 +393,42 @@ export function Sidebar() {
 
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-3 mb-4 px-2">
-          <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
+          <button
+            onClick={handleOpenUserEdit}
+            className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
+            title="Edit profile"
+          >
             <span className="text-accent font-display font-medium text-sm">
               {user?.username?.charAt(0).toUpperCase()}
             </span>
-          </div>
+          </button>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-text truncate">{user?.username}</p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={toggleTheme}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all font-display"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <span>Light</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+                <span>Dark</span>
+              </>
+            )}
+          </button>
         </div>
 
         <button
@@ -449,6 +522,42 @@ export function Sidebar() {
         selectedUsers={boards.find(b => b.id === sharingBoardId)?.sharedWith || []}
         mode="manage"
       />
+
+      <Modal
+        isOpen={isUserEditModalOpen}
+        onClose={() => {
+          setIsUserEditModalOpen(false);
+          setEditingUsername('');
+        }}
+        title="Edit Profile"
+        size="sm"
+      >
+        <form onSubmit={handleSaveUsername} className="space-y-4">
+          <Input
+            label="Username"
+            type="text"
+            value={editingUsername}
+            onChange={(e) => setEditingUsername(e.target.value)}
+            placeholder="Enter your username"
+            required
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => {
+                setIsUserEditModalOpen(false);
+                setEditingUsername('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={isUpdatingUsername}>
+              Save
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </aside>
   );
 }

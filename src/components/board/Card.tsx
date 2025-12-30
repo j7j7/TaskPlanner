@@ -130,7 +130,7 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
           style={{ backgroundColor: priorityColors[card.priority] }}
         />
 
-        <div className="pl-3">
+        <div className="pl-3 flex flex-col h-full">
           <div className="flex items-start justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {card.icon && (
@@ -165,7 +165,7 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
             </p>
           )}
 
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex flex-wrap gap-1">
               {cardLabels.map((label) => (
                 <span
@@ -234,12 +234,14 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
           </div>
 
           {card.dueDate && (
-            <span className="text-[10px] text-textMuted font-mono bg-surface px-1.5 py-0.5 rounded mt-2 inline-block">
-              {new Date(card.dueDate).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              })}
-            </span>
+            <div className="mt-auto flex justify-end">
+              <span className="text-[10px] text-textMuted font-mono bg-surface px-1.5 py-0.5 rounded">
+                {new Date(card.dueDate).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </span>
+            </div>
           )}
         </div>
       </div>

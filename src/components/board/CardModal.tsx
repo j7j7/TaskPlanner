@@ -142,26 +142,8 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={readOnly ? 'View Card' : 'Edit Card'} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
-            Column
-          </label>
-          <select
-            value={selectedColumnId}
-            onChange={(e) => handleColumnChange(e.target.value)}
-            className="input"
-            disabled={readOnly || columns.length === 0}
-          >
-            {columns.map((column) => (
-              <option key={column.id} value={column.id}>
-                {column.title}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div>
           <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
             Title
@@ -212,6 +194,24 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
             placeholder="Add a description..."
             disabled={readOnly}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+            Column
+          </label>
+          <select
+            value={selectedColumnId}
+            onChange={(e) => handleColumnChange(e.target.value)}
+            className="input"
+            disabled={readOnly || columns.length === 0}
+          >
+            {columns.map((column) => (
+              <option key={column.id} value={column.id}>
+                {column.title}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

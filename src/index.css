@@ -23,7 +23,7 @@
 
   --shadow-hard: 4px 4px 0px 0px rgba(255,255,255,0.1);
   --shadow-hard-sm: 2px 2px 0px 0px rgba(255,255,255,0.1);
-  --shadow-hard-accent: 4px 4px 0px 0px #ccff00;
+  --shadow-hard-hover: 4px 4px 0px 0px rgba(255,255,255,0.15);
 
   --animate-fade-in: fadeIn 0.3s ease-out;
   --animate-slide-up: slideUp 0.4s ease-out;
@@ -116,14 +116,14 @@
 
   .dark body {
     background-image: 
-      radial-gradient(ellipse at top, rgba(204, 255, 0, 0.03) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom right, rgba(0, 102, 255, 0.03) 0%, transparent 50%);
+      radial-gradient(ellipse at top, rgba(255,255,255,0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(255,255,255,0.02) 0%, transparent 50%);
   }
 
   .light body {
     background-image: 
-      radial-gradient(ellipse at top, rgba(0, 102, 255, 0.05) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom right, rgba(204, 255, 0, 0.03) 0%, transparent 50%);
+      radial-gradient(ellipse at top, rgba(0,0,0,0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,0,0,0.02) 0%, transparent 50%);
   }
 
   .dark ::selection {
@@ -140,7 +140,7 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-surface;
+    @apply bg-surface rounded-full;
   }
 
   ::-webkit-scrollbar-thumb {
@@ -159,7 +159,7 @@
   }
 
   .btn-primary {
-    @apply bg-accent text-background border-accent hover:bg-accentHover hover:shadow-hard-accent active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+    @apply bg-accent text-background border-accent hover:bg-accentHover hover:shadow-hard-hover active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
   }
 
   .btn-secondary {
@@ -189,11 +189,12 @@
 
   .card {
     @apply bg-surfaceLight border-2 border-border rounded-xl p-4;
-    box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.05);
+    box-shadow: 0 4px 15px -3px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.03);
   }
 
   .card-hover {
-    @apply hover:border-accent hover:shadow-hard transition-all duration-200 cursor-pointer;
+    @apply hover:border-accent transition-all duration-200 cursor-pointer;
+    box-shadow: 0 8px 25px -5px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.05);
   }
 
   .modal-overlay {
@@ -203,7 +204,7 @@
 
   .modal-content {
     @apply bg-surface border-2 border-border rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-auto;
-    box-shadow: 8px 8px 0px 0px rgba(204, 255, 0, 0.2);
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5), 0 10px 20px -5px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
     animation: scaleIn 0.2s ease-out;
   }
 
@@ -214,7 +215,7 @@
 
   .board-column {
     @apply flex flex-col flex-shrink-0 w-full sm:w-72 max-h-full bg-surface border-2 border-border rounded-xl overflow-hidden;
-    box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.05);
+    box-shadow: 0 4px 20px -5px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
   }
 
   .board-column-header {
@@ -225,13 +226,13 @@
 
   .task-card {
     @apply bg-surfaceLight border-2 border-border rounded-lg p-3 cursor-grab active:cursor-grabbing relative mt-0;
-    box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.05);
+    box-shadow: 0 2px 8px -2px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.03);
     transition: transform 0.1s ease, box-shadow 0.1s ease;
   }
 
   .task-card:hover {
     @apply border-accent;
-    box-shadow: 4px 4px 0px 0px rgba(204, 255, 0, 0.2);
+    box-shadow: 0 4px 15px -3px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.05);
   }
 
   .task-card.dragging,
@@ -243,7 +244,7 @@
 
   .task-card.dragging {
     @apply opacity-50 rotate-2 scale-105;
-    box-shadow: 8px 8px 0px 0px rgba(204, 255, 0, 0.3);
+    box-shadow: 0 15px 30px -8px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
   }
 
   .drag-over .board-column-header,
@@ -284,12 +285,12 @@
 
   .scrollbar-thin::-webkit-scrollbar-track {
     background: #1a1a1a;
-    border-radius: 3px;
+    border-radius: 10px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: #444;
-    border-radius: 3px;
+    border-radius: 10px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {

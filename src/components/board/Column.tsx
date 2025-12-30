@@ -8,6 +8,8 @@ import { Card } from './Card';
 import { useBoardStore, useLabels } from '../../store/useBoardStore';
 import { useAuth } from '../../context/AuthContext';
 import { UserSelector } from '../ui/UserSelector';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 
 interface ColumnProps {
   column: ColumnType;
@@ -15,6 +17,8 @@ interface ColumnProps {
   activeCardId?: string | null;
   isRotated?: boolean;
 }
+
+const COLUMN_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 function getUserColor(userId: string): string {
   const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
@@ -34,9 +38,10 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
   const labels = allLabels.filter((label) => label.userId === user?.id);
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(column.title);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState(column.title);
+  const [editColor, setEditColor] = useState(column.color);
 
   // Make column sortable (draggable)
   const {
@@ -82,11 +87,14 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
     }
   };
 
-  const handleUpdateTitle = async () => {
-    if (editTitle.trim() && editTitle !== column.title) {
-      await updateColumn(column.id, { title: editTitle.trim() });
+  const handleSaveColumn = async () => {
+    if (editTitle.trim()) {
+      await updateColumn(column.id, { 
+        title: editTitle.trim(),
+        color: editColor 
+      });
     }
-    setIsEditing(false);
+    setIsEditModalOpen(false);
   };
 
   const handleDeleteColumn = async () => {
@@ -161,28 +169,19 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
           style={{ borderColor: column.color }}
         >
           <div className="flex items-center justify-between">
-            {canWrite && isEditing ? (
-              <input
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                onBlur={handleUpdateTitle}
-                onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="bg-surfaceLight border border-border rounded px-2 py-1 text-lg font-display font-semibold outline-none focus:border-accent"
-                autoFocus
-              />
-            ) : (
-              <span
-                className={`cursor-pointer hover:text-accent transition-colors ${canWrite ? '' : 'cursor-default'}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (canWrite) setIsEditing(true);
-                }}
-              >
-                {column.title}
-              </span>
-            )}
+            <span
+              className={`cursor-pointer hover:text-accent transition-colors ${canWrite ? '' : 'cursor-default'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canWrite) {
+                  setEditTitle(column.title);
+                  setEditColor(column.color);
+                  setIsEditModalOpen(true);
+                }
+              }}
+            >
+              {column.title}
+            </span>
             <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
               <span className="text-xs text-textMuted font-mono bg-surfaceLight px-2 py-0.5 rounded-full">
                 {column.cards.length}
@@ -279,7 +278,7 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
             items={column.cards.map((card) => card.id)}
             strategy={isRotated ? horizontalListSortingStrategy : verticalListSortingStrategy}
           >
-            <div className={`${isRotated ? 'flex flex-row gap-3 h-full' : 'flex flex-col'}`}>
+            <div className={`${isRotated ? 'flex flex-row gap-3 h-full' : 'flex flex-col gap-3'}`}>
               {column.cards.map((card, index) => {
                 const isOver = dragOverId === card.id && activeCardId !== card.id;
                 
@@ -350,6 +349,56 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
         selectedUsers={sharedUsers}
         mode="manage"
       />
+
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Column"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+              Column Title
+            </label>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="input"
+              placeholder="e.g., In Review"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-2 font-display">
+              Color
+            </label>
+            <div className="flex gap-2">
+              {COLUMN_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setEditColor(color)}
+                  className={`w-8 h-8 rounded-lg transition-all border-2 ${
+                    editColor === color ? 'border-white scale-110' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveColumn}>
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

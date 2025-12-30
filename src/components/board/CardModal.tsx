@@ -28,7 +28,7 @@ const LABEL_COLORS = [
 ];
 
 export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly = false }: CardModalProps) {
-  const { updateCard, deleteCard, createLabel, updateLabel, deleteLabel } = useBoardStore();
+  const { updateCard, deleteCard, createLabel, updateLabel, deleteLabel, moveCard, currentBoard } = useBoardStore();
   const { user } = useAuth();
   const { labels: allLabels } = useLabels();
   
@@ -42,6 +42,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   const [dueDate, setDueDate] = useState(card.dueDate || '');
   const [selectedLabels, setSelectedLabels] = useState<string[]>(card.labels);
   const [icon, setIcon] = useState<string>(card.icon || '');
+  const [selectedColumnId, setSelectedColumnId] = useState(card.columnId);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingLabel, setIsCreatingLabel] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
@@ -51,6 +52,8 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   const [editLabelName, setEditLabelName] = useState('');
   const [editLabelColor, setEditLabelColor] = useState('');
 
+  const columns = currentBoard?.columns?.sort((a, b) => a.order - b.order) || [];
+
   useEffect(() => {
     setTitle(card.title);
     setDescription(card.description || '');
@@ -58,7 +61,22 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
     setDueDate(card.dueDate || '');
     setSelectedLabels(card.labels);
     setIcon(card.icon || '');
+    setSelectedColumnId(card.columnId);
   }, [card]);
+
+  const handleColumnChange = async (newColumnId: string) => {
+    if (newColumnId === selectedColumnId || readOnly) return;
+    
+    const fromColumn = columns.find(c => c.id === selectedColumnId);
+    const toColumn = columns.find(c => c.id === newColumnId);
+    
+    if (fromColumn && toColumn) {
+      const newIndex = toColumn.cards.length;
+      
+      await moveCard(card.id, selectedColumnId, newColumnId, newIndex);
+      setSelectedColumnId(newColumnId);
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim() || readOnly) return;
@@ -126,6 +144,24 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={readOnly ? 'View Card' : 'Edit Card'} size="md">
       <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+            Column
+          </label>
+          <select
+            value={selectedColumnId}
+            onChange={(e) => handleColumnChange(e.target.value)}
+            className="input"
+            disabled={readOnly || columns.length === 0}
+          >
+            {columns.map((column) => (
+              <option key={column.id} value={column.id}>
+                {column.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
             Title

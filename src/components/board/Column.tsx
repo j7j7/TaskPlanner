@@ -357,20 +357,6 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
             </form>
           ) : null}
         </div>
-
-        {!canWrite || !isAddingCard ? (
-          <div className={`p-3 border-t border-border flex-shrink-0 ${isRotated ? 'hidden' : ''}`}>
-            <button
-              onClick={() => setIsAddingCard(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all text-sm font-display"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Card
-            </button>
-          </div>
-        ) : null}
       </div>
 
       <UserSelector

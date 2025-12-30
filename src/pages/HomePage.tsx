@@ -41,7 +41,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 md:p-8">
+    <div className="flex-1 flex flex-col min-h-0 p-4 sm:p-6 md:p-8 overflow-auto">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-display font-bold text-text mb-2">

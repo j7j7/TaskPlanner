@@ -62,6 +62,11 @@
     box-sizing: border-box;
   }
 
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -69,7 +74,8 @@
   }
 
   body {
-    @apply bg-background text-text min-h-screen m-0;
+    @apply bg-background text-text m-0;
+    overflow: hidden;
     background-image: 
       radial-gradient(ellipse at top, rgba(204, 255, 0, 0.03) 0%, transparent 50%),
       radial-gradient(ellipse at bottom right, rgba(0, 102, 255, 0.03) 0%, transparent 50%);
@@ -158,7 +164,7 @@
   }
 
   .board-column {
-    @apply flex-shrink-0 w-80 bg-surface border-2 border-border rounded-xl overflow-hidden;
+    @apply flex flex-col flex-shrink-0 w-full sm:w-72 max-h-full bg-surface border-2 border-border rounded-xl overflow-hidden;
     box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.05);
   }
 
@@ -167,9 +173,13 @@
   }
 
   .task-card {
-    @apply bg-surfaceLight border-2 border-border rounded-lg p-3 mb-3 cursor-grab active:cursor-grabbing relative;
+    @apply bg-surfaceLight border-2 border-border rounded-lg p-3 cursor-grab active:cursor-grabbing relative mt-0;
     box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.05);
     transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+
+  .task-card + .task-card {
+    margin-top: 12px;
   }
 
   .task-card:hover {
@@ -198,5 +208,29 @@
 
   .drag-overlay {
     @apply cursor-grabbing;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #444 #1a1a1a;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #555;
   }
 }

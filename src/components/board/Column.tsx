@@ -44,12 +44,12 @@ export function Column({ column }: ColumnProps) {
 
   return (
     <div
-      className={`board-column flex flex-col h-full transition-all duration-200 shrink-0 sm:shrink ${
+      className={`board-column flex flex-col h-full max-h-full transition-all duration-200 shrink-0 sm:shrink w-full sm:w-72 max-w-full ${
         isOver ? 'border-accent bg-surfaceLight/50' : ''
       }`}
     >
       <div
-        className="board-column-header flex items-center justify-between"
+        className="board-column-header flex items-center justify-between flex-shrink-0"
         style={{ borderColor: column.color }}
       >
         {isEditing ? (
@@ -87,12 +87,7 @@ export function Column({ column }: ColumnProps) {
 
       <div
         ref={setNodeRef}
-        className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[100px]"
-        onDoubleClick={(e) => {
-          if (e.target === e.currentTarget) {
-            setIsAddingCard(true);
-          }
-        }}
+        className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0 scrollbar-thin"
       >
         <SortableContext
           items={column.cards.map((card) => card.id)}
@@ -134,7 +129,7 @@ export function Column({ column }: ColumnProps) {
       </div>
 
       {!isAddingCard && (
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border flex-shrink-0">
           <button
             onClick={() => setIsAddingCard(true)}
             className="w-full flex items-center justify-center gap-2 py-2 text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all text-sm font-display"

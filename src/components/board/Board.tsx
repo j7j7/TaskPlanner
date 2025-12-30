@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Column } from './Column';
 import type { Card as CardType } from '../../types';
 import { useBoardStore } from '../../store/useBoardStore';
@@ -26,11 +26,14 @@ export function Board() {
     );
   }
 
+  const columns = (currentBoard.columns ?? []).sort((a, b) => a.order - b.order);
+  const columnIds = columns.map((col) => col.id);
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const activeId = active.id as string;
     
-    for (const column of (currentBoard.columns ?? [])) {
+    for (const column of columns) {
       const card = column.cards?.find((c) => c.id === activeId);
       if (card) {
         setActiveCard(card);
@@ -48,7 +51,7 @@ export function Board() {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    const fromColumn = (currentBoard.columns ?? []).find((col) =>
+    const fromColumn = columns.find((col) =>
       col.cards?.some((card) => card.id === activeId)
     );
 
@@ -59,14 +62,14 @@ export function Board() {
 
     if (activeId === overId) return;
 
-    const toColumn = (currentBoard.columns ?? []).find((col) => col.id === overId);
+    const toColumn = columns.find((col) => col.id === overId);
 
     if (toColumn) {
       const overIndex = toColumn.cards?.findIndex((c) => c.id === overId) ?? 0;
       const newIndex = overIndex === -1 ? 0 : overIndex;
       moveCard(activeId, fromColumn.id, toColumn.id, newIndex);
     } else {
-      const toColumnSame = (currentBoard.columns ?? []).find((col) =>
+      const toColumnSame = columns.find((col) =>
         col.cards?.some((c) => c.id === overId)
       );
 
@@ -84,16 +87,14 @@ export function Board() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-3 sm:gap-4 md:gap-6 h-full overflow-x-auto pb-4 px-2">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 h-full min-h-0 overflow-auto">
         <SortableContext
-          items={(currentBoard.columns ?? []).map((col) => col.id)}
+          items={columnIds}
           strategy={horizontalListSortingStrategy}
         >
-          {(currentBoard.columns ?? [])
-            .sort((a, b) => a.order - b.order)
-            .map((column) => (
-              <Column key={column.id} column={column} />
-            ))}
+          {columns.map((column) => (
+            <Column key={column.id} column={column} />
+          ))}
         </SortableContext>
       </div>
 

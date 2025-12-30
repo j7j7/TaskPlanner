@@ -55,8 +55,8 @@ export function BoardPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
+    <div className="flex-1 flex flex-col min-h-0">
+      <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-display font-bold text-text truncate">
@@ -82,7 +82,7 @@ export function BoardPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-hidden p-3 sm:p-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6">
         {currentBoard ? (
           <Board />
         ) : (

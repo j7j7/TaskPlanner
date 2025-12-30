@@ -143,9 +143,13 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
       <div
         ref={setNodeRef}
         style={style}
-        className={`board-column flex flex-col h-full max-h-full transition-all duration-200 shrink-0 sm:shrink w-full max-w-full ${
+        className={`board-column flex flex-col transition-all duration-200 shrink-0 sm:shrink w-full max-w-full ${
           isOver ? 'border-accent bg-surfaceLight/50 drag-over' : ''
-        } ${isDragging ? 'opacity-50' : ''} ${isRotated ? 'min-h-[180px]' : 'sm:w-72'}`}
+        } ${isDragging ? 'opacity-50' : ''} ${
+          isRotated 
+            ? 'h-full max-h-full min-h-[180px]' 
+            : 'sm:h-full sm:max-h-full sm:w-72 h-auto'
+        }`}
       >
         <div
           {...attributes}

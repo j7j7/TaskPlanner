@@ -1,0 +1,202 @@
+@import "tailwindcss";
+@import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=jetbrains-mono@400,500&display=swap');
+
+@theme {
+  --font-display: 'Clash Display', system-ui, sans-serif;
+  --font-body: 'JetBrains Mono', monospace;
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --color-background: #0a0a0a;
+  --color-surface: #1a1a1a;
+  --color-surfaceLight: #252525;
+  --color-border: #333333;
+  --color-text: #ffffff;
+  --color-textMuted: #888888;
+  --color-accent: #ccff00;
+  --color-accentHover: #b3e600;
+  --color-primary: #0066ff;
+  --color-primaryHover: #0052cc;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-pink: #ec4899;
+
+  --shadow-hard: 4px 4px 0px 0px rgba(255,255,255,0.1);
+  --shadow-hard-sm: 2px 2px 0px 0px rgba(255,255,255,0.1);
+  --shadow-hard-accent: 4px 4px 0px 0px #ccff00;
+
+  --animate-fade-in: fadeIn 0.3s ease-out;
+  --animate-slide-up: slideUp 0.4s ease-out;
+  --animate-slide-down: slideDown 0.3s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+  --animate-pulse-soft: pulseSoft 2s ease-in-out infinite;
+
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes slideDown {
+    0% { transform: translateY(-10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    0% { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-text min-h-screen m-0;
+    background-image: 
+      radial-gradient(ellipse at top, rgba(204, 255, 0, 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0, 102, 255, 0.03) 0%, transparent 50%);
+  }
+
+  ::selection {
+    @apply bg-accent text-background;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-textMuted;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 font-medium text-sm transition-all duration-200 border-2 border-transparent cursor-pointer;
+    font-family: var(--font-body);
+  }
+
+  .btn-primary {
+    @apply bg-accent text-background border-accent hover:bg-accentHover hover:shadow-hard-accent active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+  }
+
+  .btn-secondary {
+    @apply bg-surfaceLight text-text border-border hover:border-accent hover:text-accent;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white border-danger hover:bg-red-600 hover:shadow-hard active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+  }
+
+  .btn-ghost {
+    @apply text-textMuted hover:text-text hover:bg-surfaceLight;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 bg-surfaceLight text-text border-2 border-border rounded-lg outline-none transition-all duration-200;
+    font-family: var(--font-body);
+  }
+
+  .input:focus {
+    @apply border-accent shadow-hard-sm;
+  }
+
+  .input::placeholder {
+    @apply text-textMuted;
+  }
+
+  .card {
+    @apply bg-surfaceLight border-2 border-border rounded-xl p-4;
+    box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.05);
+  }
+
+  .card-hover {
+    @apply hover:border-accent hover:shadow-hard transition-all duration-200 cursor-pointer;
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .modal-content {
+    @apply bg-surface border-2 border-border rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-auto;
+    box-shadow: 8px 8px 0px 0px rgba(204, 255, 0, 0.2);
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  .label {
+    @apply inline-flex items-center px-2 py-1 text-xs font-medium rounded-md;
+    font-family: var(--font-body);
+  }
+
+  .board-column {
+    @apply flex-shrink-0 w-80 bg-surface border-2 border-border rounded-xl overflow-hidden;
+    box-shadow: 4px 4px 0px 0px rgba(255,255,255,0.05);
+  }
+
+  .board-column-header {
+    @apply px-4 py-3 border-b-2 border-border font-display font-semibold text-lg;
+  }
+
+  .task-card {
+    @apply bg-surfaceLight border-2 border-border rounded-lg p-3 mb-3 cursor-grab active:cursor-grabbing relative;
+    box-shadow: 2px 2px 0px 0px rgba(255,255,255,0.05);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+
+  .task-card:hover {
+    @apply border-accent;
+    box-shadow: 4px 4px 0px 0px rgba(204, 255, 0, 0.2);
+  }
+
+  .task-card.dragging {
+    @apply opacity-50 rotate-2 scale-105;
+    box-shadow: 8px 8px 0px 0px rgba(204, 255, 0, 0.3);
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-textMuted hover:text-text hover:bg-surfaceLight transition-all duration-200 cursor-pointer;
+  }
+
+  .sidebar-item.active {
+    @apply bg-accent/10 text-accent border border-accent/30;
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation: fadeIn 0.3s ease-out, slideUp 0.4s ease-out;
+  }
+
+  .drag-overlay {
+    @apply cursor-grabbing;
+  }
+}

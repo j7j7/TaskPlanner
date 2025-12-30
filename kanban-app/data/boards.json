@@ -1,0 +1,250 @@
+[
+  {
+    "id": "board-personal",
+    "userId": "demo",
+    "title": "Personal",
+    "columns": [
+      {
+        "id": "col-1",
+        "title": "Backlog",
+        "color": "#6366f1",
+        "order": 0,
+        "cards": []
+      },
+      {
+        "id": "col-2",
+        "title": "To Do",
+        "color": "#3b82f6",
+        "order": 1,
+        "cards": [
+          {
+            "id": "card-1",
+            "title": "Buy groceries",
+            "description": "Get milk, eggs, bread, and vegetables",
+            "labels": [
+              "todo"
+            ],
+            "priority": "medium",
+            "dueDate": null,
+            "order": 0,
+            "createdAt": "2024-01-15T10:00:00Z",
+            "updatedAt": "2024-01-15T10:00:00Z"
+          },
+          {
+            "id": "card-2",
+            "title": "Call mom",
+            "description": "Check in and see how she's doing",
+            "labels": [],
+            "priority": "low",
+            "dueDate": null,
+            "order": 1,
+            "createdAt": "2024-01-15T10:00:00Z",
+            "updatedAt": "2024-01-15T10:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "col-3",
+        "title": "In Progress",
+        "color": "#f59e0b",
+        "order": 2,
+        "cards": []
+      },
+      {
+        "id": "col-4",
+        "title": "Done",
+        "color": "#22c55e",
+        "order": 3,
+        "cards": []
+      }
+    ],
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z"
+  },
+  {
+    "id": "board-work",
+    "userId": "demo",
+    "title": "Work",
+    "columns": [
+      {
+        "id": "col-5",
+        "title": "Backlog",
+        "color": "#6366f1",
+        "order": 0,
+        "cards": []
+      },
+      {
+        "id": "col-6",
+        "title": "To Do",
+        "color": "#3b82f6",
+        "order": 1,
+        "cards": [
+          {
+            "id": "card-3",
+            "title": "Finish quarterly report",
+            "description": "Complete the Q4 analysis and prepare presentation",
+            "labels": [
+              "important"
+            ],
+            "priority": "high",
+            "dueDate": "2024-01-20",
+            "order": 0,
+            "createdAt": "2024-01-15T10:00:00Z",
+            "updatedAt": "2024-01-15T10:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "col-7",
+        "title": "In Progress",
+        "color": "#f59e0b",
+        "order": 2,
+        "cards": [
+          {
+            "id": "card-4",
+            "title": "Team meeting",
+            "description": "Weekly sync with the development team",
+            "labels": [],
+            "priority": "medium",
+            "dueDate": "2024-01-16",
+            "order": 0,
+            "createdAt": "2024-01-15T10:00:00Z",
+            "updatedAt": "2024-01-15T10:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "col-8",
+        "title": "Done",
+        "color": "#22c55e",
+        "order": 3,
+        "cards": []
+      }
+    ],
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z"
+  },
+  {
+    "id": "board-projects",
+    "userId": "demo",
+    "title": "Projects",
+    "columns": [
+      {
+        "id": "col-9",
+        "title": "Backlog",
+        "color": "#6366f1",
+        "order": 0,
+        "cards": []
+      },
+      {
+        "id": "col-10",
+        "title": "To Do",
+        "color": "#3b82f6",
+        "order": 1,
+        "cards": [
+          {
+            "id": "card-5",
+            "title": "Q1 goals",
+            "description": "Define objectives and key results for Q1",
+            "labels": [
+              "feature"
+            ],
+            "priority": "high",
+            "dueDate": "2024-01-25",
+            "order": 0,
+            "createdAt": "2024-01-15T10:00:00Z",
+            "updatedAt": "2024-01-15T10:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "col-11",
+        "title": "In Progress",
+        "color": "#f59e0b",
+        "order": 2,
+        "cards": [
+          {
+            "id": "card-6",
+            "title": "Review design",
+            "description": "Review new UI mockups for the dashboard",
+            "labels": [
+              "idea"
+            ],
+            "priority": "medium",
+            "dueDate": "2024-01-18",
+            "order": 0,
+            "createdAt": "2024-01-15T10:00:00Z",
+            "updatedAt": "2024-01-15T10:00:00Z"
+          }
+        ]
+      },
+      {
+        "id": "col-12",
+        "title": "Done",
+        "color": "#22c55e",
+        "order": 3,
+        "cards": []
+      }
+    ],
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z"
+  },
+  {
+    "id": "ff0d99da-4d2f-42c9-8e9a-ad48deed5263",
+    "userId": "57087176-148d-487b-9749-d82a5662886d",
+    "title": "My First Board",
+    "columns": [],
+    "createdAt": "2025-12-30T03:29:23.773Z",
+    "updatedAt": "2025-12-30T03:29:23.773Z"
+  },
+  {
+    "id": "c19afe06-b247-4211-b7ec-5d8fe4a06e3e",
+    "userId": "f1c2fb8e-c049-483f-b683-35c33d83400e",
+    "columns": [
+      {
+        "id": "col-1767065528985",
+        "title": "backlog",
+        "color": "#3b82f6",
+        "order": 0,
+        "cards": [
+          {
+            "id": "card-1767065595978",
+            "columnId": "col-1767065528985",
+            "title": "test2",
+            "labels": [],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T03:33:15.978Z",
+            "updatedAt": "2025-12-30T03:33:15.978Z"
+          },
+          {
+            "id": "card-1767065569714",
+            "columnId": "col-1767065528985",
+            "title": "Test1",
+            "labels": [],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T03:32:49.714Z",
+            "updatedAt": "2025-12-30T03:32:55.871Z"
+          }
+        ]
+      },
+      {
+        "id": "col-1767065547964",
+        "title": "in progress",
+        "color": "#f59e0b",
+        "order": 1,
+        "cards": []
+      },
+      {
+        "id": "col-1767065557030",
+        "title": "complete",
+        "color": "#84cc16",
+        "order": 2,
+        "cards": []
+      }
+    ],
+    "createdAt": "2025-12-30T03:32:00.750Z",
+    "updatedAt": "2025-12-30T03:33:15.988Z"
+  }
+]

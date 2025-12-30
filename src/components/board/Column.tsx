@@ -82,7 +82,13 @@ export function Column({ column }: ColumnProps) {
   const isOwner = column.userId === user?.id;
   const sharedUsers: SharedUser[] = column.sharedWith || [];
   const canWrite = isOwner || sharedUsers.some(su => su.userId === user?.id && su.permission === 'write');
-  const allUserIds = [column.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
+  const allUserIds = isOwner
+    ? sharedUsers.map(su => su.userId)
+    : [column.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
+
+  const getUserDisplay = (userId: string) => {
+    return users.find(x => x.id === userId) || (user?.id === userId ? user : null);
+  };
 
   const handleRemoveSharedUser = async (userId: string) => {
     await handleUnshare(userId);
@@ -147,10 +153,9 @@ export function Column({ column }: ColumnProps) {
 
           <div className="flex items-center gap-1 flex-wrap">
             {allUserIds.map((userId, index) => {
-              const u = users.find(x => x.id === userId);
-              const isShared = index > 0;
-              const sharedUser = isShared ? sharedUsers[index - 1] : null;
-              const canRemove = isShared && isOwner;
+              const u = getUserDisplay(userId || '');
+              const sharedUser = sharedUsers.find(su => su.userId === userId);
+              const canRemove = isOwner;
               return (
                 <div
                   key={userId}
@@ -158,7 +163,7 @@ export function Column({ column }: ColumnProps) {
                 >
                   <div
                     className={`w-6 h-6 rounded-full flex items-center justify-center border-2 border-surface ${
-                      isShared ? 'ring-1 ring-accent' : ''
+                      sharedUser?.permission === 'write' ? 'ring-1 ring-accent' : ''
                     }`}
                     style={{ backgroundColor: getUserColor(userId || 'unknown') }}
                     title={u?.username || 'Unknown'}
@@ -167,7 +172,7 @@ export function Column({ column }: ColumnProps) {
                       {(u?.username || '?').charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  {isShared && sharedUser && (
+                  {sharedUser && (
                     <span className="absolute -top-2 -right-2 text-[10px]" title={`${sharedUser.permission} access`}>
                       {sharedUser.permission === 'write' ? '✏️' : '👁️'}
                     </span>
@@ -182,7 +187,7 @@ export function Column({ column }: ColumnProps) {
                       </svg>
                     </button>
                   )}
-                  {index === 0 && (
+                  {!isOwner && index === 0 && (
                     <span className="ml-1 text-[10px] text-textMuted uppercase tracking-wider">
                       Owner
                     </span>
@@ -190,6 +195,9 @@ export function Column({ column }: ColumnProps) {
                 </div>
               );
             })}
+            {!isOwner && allUserIds.length === 0 && (
+              <span className="text-xs text-textMuted italic">Private</span>
+            )}
           </div>
         </div>
 

@@ -47,7 +47,13 @@ export function Card({ card, labels }: CardProps) {
   const isOwner = card.userId === user?.id;
   const sharedUsers: SharedUser[] = card.sharedWith || [];
   const canWrite = isOwner || sharedUsers.some(su => su.userId === user?.id && su.permission === 'write');
-  const allUserIds = [card.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
+  const allUserIds = isOwner
+    ? sharedUsers.map(su => su.userId)
+    : [card.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
+
+  const getUserDisplay = (userId: string) => {
+    return users.find(x => x.id === userId) || (user?.id === userId ? user : null);
+  };
 
   const handleShare = async (userId: string, permission?: 'read' | 'write') => {
     if (currentBoard) {
@@ -145,10 +151,9 @@ export function Card({ card, labels }: CardProps) {
 
             <div className="flex items-center gap-1">
               {allUserIds.slice(0, 3).map((userId, index) => {
-                const u = users.find(x => x.id === userId);
-                const isShared = index > 0;
-                const sharedUser = isShared ? sharedUsers[index - 1] : null;
-                const canRemove = isShared && isOwner;
+                const u = getUserDisplay(userId || '');
+                const sharedUser = sharedUsers.find(su => su.userId === userId);
+                const canRemove = isOwner;
                 return (
                   <div
                     key={userId}
@@ -156,7 +161,7 @@ export function Card({ card, labels }: CardProps) {
                   >
                     <div
                       className={`w-5 h-5 rounded-full flex items-center justify-center border border-surface ${
-                        isShared ? 'ring-1 ring-accent' : ''
+                        sharedUser?.permission === 'write' ? 'ring-1 ring-accent' : ''
                       }`}
                       style={{ backgroundColor: getUserColor(userId || 'unknown') }}
                       title={u?.username || 'Unknown'}
@@ -165,7 +170,7 @@ export function Card({ card, labels }: CardProps) {
                         {(u?.username || '?').charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    {isShared && sharedUser && (
+                    {sharedUser && (
                       <span className="absolute -top-1.5 -right-1.5 text-[8px]" title={`${sharedUser.permission} access`}>
                         {sharedUser.permission === 'write' ? '✏️' : '👁️'}
                       </span>

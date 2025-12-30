@@ -138,13 +138,6 @@ router.put('/:id', requireAuth, (req, res) => {
   }
 });
 
-    res.json({ board: updated });
-  } catch (error) {
-    console.error('Update board error:', error);
-    res.status(500).json({ error: 'Failed to update board' });
-  }
-});
-
 router.put('/:id/cards/:cardId/move', requireAuth, (req, res) => {
   try {
     const board = boardsDb.findById(req.params.id);

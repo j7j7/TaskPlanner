@@ -6,6 +6,8 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  console.log('Layout rendering with children');
+  
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />

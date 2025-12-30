@@ -3,7 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import type { Card as CardType, Label, SharedUser } from '../../types';
 import { CardModal } from './CardModal';
 import { useBoardStore } from '../../store/useBoardStore';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 import { UserSelector } from '../ui/UserSelector';
 
 interface CardProps {

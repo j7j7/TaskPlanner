@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useBoardStore } from '../../store/useBoardStore';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../ui/Modal';
 import type { SharePermission } from '../../types';
 

@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { useBoardStore } from '../../store/useBoardStore';
+import { useAuth } from '../../context/AuthContext';
+import { useBoardStore, useBoards } from '../../store/useBoardStore';
 import type { Board } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -19,7 +19,8 @@ function getBoardColor(boardId: string): string {
 
 export function Sidebar() {
   const { user, logout } = useAuth();
-  const { boards, currentBoard, fetchBoards, createBoard, updateBoard, deleteBoard, fetchUsers, shareBoard } = useBoardStore();
+  const { currentBoard, createBoard, updateBoard, deleteBoard, shareBoard } = useBoardStore();
+  const { boards } = useBoards();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -31,11 +32,6 @@ export function Sidebar() {
   const [editingBoardTitle, setEditingBoardTitle] = useState('');
   const [sharingBoardId, setSharingBoardId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetchBoards();
-    fetchUsers();
-  }, [fetchBoards, fetchUsers]);
 
   const handleLogout = async () => {
     await logout();
@@ -104,7 +100,7 @@ export function Sidebar() {
     setSharingBoardId(boardId);
   };
 
-  const handleShare = async (userId: string, permission?: 'read' | 'write') => {
+  const handleShare = async (userId: string, permission: 'read' | 'write' = 'write') => {
     if (sharingBoardId) {
       await shareBoard(sharingBoardId, userId, permission);
     }

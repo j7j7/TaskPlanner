@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Column as ColumnType, SharedUser } from '../../types';
 import { Card } from './Card';
 import { useBoardStore } from '../../store/useBoardStore';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 import { UserSelector } from '../ui/UserSelector';
 
 interface ColumnProps {
@@ -29,9 +31,34 @@ export function Column({ column }: ColumnProps) {
   const [editTitle, setEditTitle] = useState(column.title);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  const { setNodeRef, isOver } = useDroppable({
+  // Make column sortable (draggable)
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: column.id,
   });
+
+  // Make column droppable for cards
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: column.id,
+  });
+
+  // Combine refs for both sortable and droppable
+  const setNodeRef = (node: HTMLElement | null) => {
+    setSortableRef(node);
+    setDroppableRef(node);
+  };
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   useEffect(() => {
     if (isShareModalOpen) {
@@ -107,12 +134,16 @@ export function Column({ column }: ColumnProps) {
   return (
     <>
       <div
+        ref={setNodeRef}
+        style={style}
         className={`board-column flex flex-col h-full max-h-full transition-all duration-200 shrink-0 sm:shrink w-full sm:w-72 max-w-full ${
           isOver ? 'border-accent bg-surfaceLight/50 drag-over' : ''
-        }`}
+        } ${isDragging ? 'opacity-50' : ''}`}
       >
         <div
-          className="board-column-header flex flex-col gap-2 flex-shrink-0"
+          {...attributes}
+          {...listeners}
+          className="board-column-header flex flex-col gap-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
           style={{ borderColor: column.color }}
         >
           <div className="flex items-center justify-between">
@@ -123,23 +154,30 @@ export function Column({ column }: ColumnProps) {
                 onChange={(e) => setEditTitle(e.target.value)}
                 onBlur={handleUpdateTitle}
                 onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle()}
+                onPointerDown={(e) => e.stopPropagation()}
                 className="bg-surfaceLight border border-border rounded px-2 py-1 text-lg font-display font-semibold outline-none focus:border-accent"
                 autoFocus
               />
             ) : (
               <span
                 className={`cursor-pointer hover:text-accent transition-colors ${canWrite ? '' : 'cursor-default'}`}
-                onClick={() => canWrite && setIsEditing(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  canWrite && setIsEditing(true);
+                }}
               >
                 {column.title}
               </span>
             )}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
               <span className="text-xs text-textMuted font-mono bg-surfaceLight px-2 py-0.5 rounded-full">
                 {column.cards.length}
               </span>
               <button
-                onClick={() => setIsShareModalOpen(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsShareModalOpen(true);
+                }}
                 className={`${isOwner ? 'text-textMuted hover:text-accent' : 'opacity-50 cursor-not-allowed'} transition-colors p-1`}
                 title={isOwner ? "Share column" : "Only owner can share"}
                 disabled={!isOwner}
@@ -150,7 +188,10 @@ export function Column({ column }: ColumnProps) {
               </button>
               {isOwner && (
                 <button
-                  onClick={handleDeleteColumn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteColumn();
+                  }}
                   className="text-textMuted hover:text-danger transition-colors p-1"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,7 +202,7 @@ export function Column({ column }: ColumnProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-1 flex-wrap" onPointerDown={(e) => e.stopPropagation()}>
             {allUserIds.map((userId, index) => {
               const u = getUserDisplay(userId || '');
               const sharedUser = sharedUsers.find(su => su.userId === userId);
@@ -205,7 +246,6 @@ export function Column({ column }: ColumnProps) {
         </div>
 
         <div
-          ref={setNodeRef}
           className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0 scrollbar-thin"
         >
           <SortableContext

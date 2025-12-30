@@ -57,36 +57,3 @@ export interface Board {
 export interface ApiError {
   error: string;
 }
-
-export interface LoginResponse {
-  user: User;
-}
-
-export interface RegisterResponse {
-  user: User;
-}
-
-export interface BoardsResponse {
-  boards: Board[];
-}
-
-export interface BoardResponse {
-  board: Board;
-  labels: Label[];
-}
-
-export interface UsersResponse {
-  users: User[];
-}
-
-export interface LabelResponse {
-  label: Label;
-}
-
-export interface LabelsResponse {
-  labels: Label[];
-}
-
-export interface SuccessResponse {
-  success: boolean;
-}

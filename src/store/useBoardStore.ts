@@ -1,64 +1,86 @@
 import { create } from 'zustand';
-import type { Board, Column, Card, Label, User, SharePermission } from '../types';
-import { api } from '../utils/api';
-
-function generateShortId() {
-  return Math.random().toString(36).substring(2, 11) + Math.random().toString(36).substring(2, 11);
-}
+import { id } from '@instantdb/react';
+import db from '../lib/db';
+import type { Board, Label, User } from '../types';
 
 interface BoardState {
   boards: Board[];
   currentBoard: Board | null;
   labels: Label[];
   users: User[];
+  currentUser: User | null;
   isLoading: boolean;
   error: string | null;
-  
-  fetchBoards: () => Promise<void>;
-  fetchBoard: (id: string) => Promise<void>;
-  fetchLabels: () => Promise<void>;
-  fetchUsers: () => Promise<void>;
+
+  setCurrentUser: (user: User | null) => void;
+
+  // Board actions
   createBoard: (title: string) => Promise<Board | null>;
-  updateBoard: (id: string, data: Partial<Board>) => Promise<void>;
-  deleteBoard: (id: string) => Promise<void>;
+  updateBoard: (boardId: string, data: Partial<Board>) => Promise<void>;
+  deleteBoard: (boardId: string) => Promise<void>;
+
+  // Column actions
   createColumn: (title: string, color: string) => Promise<void>;
   updateColumn: (columnId: string, updates: { title?: string; color?: string }) => Promise<void>;
   deleteColumn: (columnId: string) => Promise<void>;
+
+  // Card actions
   createCard: (columnId: string, title: string) => Promise<void>;
-  updateCard: (cardId: string, updates: Partial<Card>) => Promise<void>;
+  updateCard: (cardId: string, updates: Partial<Board['columns'][0]['cards'][0]>) => Promise<void>;
   deleteCard: (cardId: string) => Promise<void>;
-  moveCard: (cardId: string, fromColumnId: string, toColumnId: string, newIndex: number) => void;
-  moveColumn: (columnId: string, newIndex: number) => void;
+  moveCard: (cardId: string, fromColumnId: string, toColumnId: string, newIndex: number) => Promise<void>;
+  moveColumn: (columnId: string, newIndex: number) => Promise<void>;
+
+  // Label actions
   createLabel: (name: string, color: string) => Promise<void>;
-  updateLabel: (id: string, data: Partial<Label>) => Promise<void>;
-  deleteLabel: (id: string) => Promise<void>;
-  shareBoard: (boardId: string, userId: string, permission?: SharePermission) => Promise<void>;
+  updateLabel: (labelId: string, data: Partial<Label>) => Promise<void>;
+  deleteLabel: (labelId: string) => Promise<void>;
+
+  // Sharing actions
+  shareBoard: (boardId: string, userId: string, permission: 'read' | 'write') => Promise<void>;
   unshareBoard: (boardId: string, userId: string) => Promise<void>;
-  updateBoardPermission: (boardId: string, userId: string, permission: SharePermission) => Promise<void>;
-  shareColumn: (boardId: string, columnId: string, userId: string, permission?: SharePermission) => Promise<void>;
+  updateBoardPermission: (boardId: string, userId: string, permission: 'read' | 'write') => Promise<void>;
+  shareColumn: (boardId: string, columnId: string, userId: string, permission: 'read' | 'write') => Promise<void>;
   unshareColumn: (boardId: string, columnId: string, userId: string) => Promise<void>;
-  updateColumnPermission: (boardId: string, columnId: string, userId: string, permission: SharePermission) => Promise<void>;
-  shareCard: (boardId: string, columnId: string, cardId: string, userId: string, permission?: SharePermission) => Promise<void>;
+  updateColumnPermission: (boardId: string, columnId: string, userId: string, permission: 'read' | 'write') => Promise<void>;
+  shareCard: (boardId: string, columnId: string, cardId: string, userId: string, permission: 'read' | 'write') => Promise<void>;
   unshareCard: (boardId: string, columnId: string, cardId: string, userId: string) => Promise<void>;
-  updateCardPermission: (boardId: string, columnId: string, cardId: string, userId: string, permission: SharePermission) => Promise<void>;
-  clearError: () => void;
+  updateCardPermission: (boardId: string, columnId: string, cardId: string, userId: string, permission: 'read' | 'write') => Promise<void>;
+
+  // Utility
+  setCurrentBoard: (board: Board | null) => void;
   clearCurrentBoard: () => void;
+  setError: (error: string | null) => void;
 }
 
-function ensureColumns(board: Board): Board {
+function now() {
+  return Date.now();
+}
+
+function toISOTimestamp(value: number | string | undefined): string {
+  if (!value) return new Date().toISOString();
+  if (typeof value === 'string') return value;
+  return new Date(value).toISOString();
+}
+
+function convertTimestamp<T extends Record<string, unknown>>(obj: T): T {
   return {
-    ...board,
-    sharedWith: board.sharedWith || [],
-    columns: board.columns?.map(col => ({
-      ...col,
-      userId: col.userId || board.userId,
-      sharedWith: col.sharedWith || [],
-      cards: (col.cards || []).map(card => ({
-        ...card,
-        userId: card.userId || col.userId || board.userId,
-        sharedWith: card.sharedWith || [],
-      })),
-    })) || [],
+    ...obj,
+    createdAt: toISOTimestamp(obj.createdAt as number | string | undefined),
+    updatedAt: toISOTimestamp(obj.updatedAt as number | string | undefined),
+  };
+}
+
+function convertBoardTimestamps(board: Board): Board {
+  // Ensure columns is always an array
+  const columns = Array.isArray(board.columns) ? board.columns : [];
+  
+  return {
+    ...convertTimestamp(board),
+    columns: columns.map((col) => ({
+      ...convertTimestamp(col),
+      cards: (col.cards || []).map((card) => convertTimestamp(card)),
+    })),
   };
 }
 
@@ -67,516 +89,570 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   currentBoard: null,
   labels: [],
   users: [],
+  currentUser: null,
   isLoading: false,
   error: null,
 
-  fetchBoards: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const { boards } = await api.boards.getAll();
-      const normalizedBoards = boards.map(ensureColumns);
-      set({ boards: normalizedBoards, isLoading: false });
-    } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
-    }
-  },
-
-  fetchBoard: async (id: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { board, labels } = await api.boards.get(id);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => {
-        const existingBoardIndex = state.boards.findIndex(b => b.id === id);
-        const newBoards = [...state.boards];
-        
-        if (existingBoardIndex !== -1) {
-          newBoards[existingBoardIndex] = normalizedBoard;
-        } else {
-          newBoards.push(normalizedBoard);
-        }
-        
-        return {
-          currentBoard: normalizedBoard,
-          labels,
-          boards: newBoards,
-          isLoading: false,
-        };
-      });
-    } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
-    }
-  },
-
-  fetchLabels: async () => {
-    try {
-      const { labels } = await api.labels.getAll();
-      set({ labels });
-    } catch (error) {
-      console.error('Failed to fetch labels:', error);
-    }
-  },
-
-  fetchUsers: async () => {
-    try {
-      const { users } = await api.users.getAll();
-      set({ users });
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    }
+  setCurrentUser: (user: User | null) => {
+    console.log('setCurrentUser called with:', user?.id);
+    set({ currentUser: user });
   },
 
   createBoard: async (title: string) => {
+    const { currentUser } = get();
+    console.log('createBoard - currentUser:', currentUser);
+    if (!currentUser) {
+      console.error('No current user when creating board');
+      return null;
+    }
+
     try {
-      const { board } = await api.boards.create(title);
-      const normalizedBoard = ensureColumns(board);
-      set((state) => ({ 
-        boards: [...state.boards, normalizedBoard],
-        currentBoard: normalizedBoard,
-      }));
-      return normalizedBoard;
+      const newBoardId = id();
+      const boardData = {
+        id: newBoardId,
+        title,
+        userId: currentUser.id,
+        createdAt: now(),
+        updatedAt: now(),
+        sharedWith: [],
+        columns: [],
+      };
+      console.log('Creating board with data:', boardData);
+
+      await db.transact([
+        db.tx.boards[newBoardId].update(boardData),
+      ]);
+
+      console.log('Board created successfully');
+      return convertBoardTimestamps(boardData as unknown as Board);
     } catch (error) {
-      set({ error: (error as Error).message });
+      console.error('Failed to create board:', error);
+      set({ error: 'Failed to create board' });
       return null;
     }
   },
 
-  updateBoard: async (id: string, data: Partial<Board>) => {
+  updateBoard: async (boardId: string, data: Partial<Board>) => {
     try {
-      const { board } = await api.boards.update(id, data);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === id ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === id ? normalizedBoard : state.currentBoard,
-      }));
+      await db.transact([
+        db.tx.boards[boardId].update({
+          ...data,
+          updatedAt: now(),
+        }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to update board' });
     }
   },
 
-  deleteBoard: async (id: string) => {
+  deleteBoard: async (boardId: string) => {
     try {
-      await api.boards.delete(id);
+      await db.transact([db.tx.boards[boardId].delete()]);
       set((state) => ({
-        boards: state.boards.filter((b) => b.id !== id),
-        currentBoard: state.currentBoard?.id === id ? null : state.currentBoard,
+        boards: state.boards.filter((b) => b.id !== boardId),
+        currentBoard: state.currentBoard?.id === boardId ? null : state.currentBoard,
       }));
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to delete board' });
     }
   },
 
   createColumn: async (title: string, color: string) => {
-    const board = get().currentBoard;
-    if (!board) return;
-
-    const columns = board.columns || [];
-    const newColumn: Column = {
-      id: generateShortId(),
-      title,
-      color,
-      order: columns.length,
-      cards: [],
-      userId: board.userId,
-      sharedWith: [],
-    };
-
-    const updatedColumns = [...columns, newColumn];
+    const { currentBoard, currentUser } = get();
+    if (!currentBoard || !currentUser) {
+      console.error('createColumn: Missing currentBoard or currentUser', { currentBoard: !!currentBoard, currentUser: !!currentUser });
+      return;
+    }
 
     try {
-      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
-      const normalizedBoard = ensureColumns(updatedBoard);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-        currentBoard: normalizedBoard,
-      }));
+      const columnId = id();
+      const existingColumns = currentBoard.columns || [];
+      const newColumn = {
+        id: columnId,
+        title,
+        color,
+        order: existingColumns.length,
+        cards: [],
+        userId: currentUser.id,
+        sharedWith: [],
+        createdAt: now(),
+        updatedAt: now(),
+      };
+
+      const updatedColumns = [...existingColumns, newColumn];
+
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({
+          columns: updatedColumns,
+          updatedAt: now(),
+        }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      console.error('createColumn: Error creating column', error);
+      set({ error: `Failed to create column: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
   updateColumn: async (columnId: string, updates: { title?: string; color?: string }) => {
-    const board = get().currentBoard;
-    if (!board) return;
-
-    const columns = board.columns || [];
-    const updatedColumns = columns.map((col) =>
-      col.id === columnId ? { ...col, ...updates } : col
-    );
+    const { currentBoard } = get();
+    if (!currentBoard) {
+      console.error('updateColumn: Missing currentBoard');
+      return;
+    }
 
     try {
-      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
-      const normalizedBoard = ensureColumns(updatedBoard);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-        currentBoard: normalizedBoard,
-      }));
+      const existingColumns = currentBoard.columns || [];
+      const columns = existingColumns.map((col) =>
+        col.id === columnId ? { ...col, ...updates, updatedAt: now() } : col
+      );
+
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      console.error('updateColumn: Error updating column', error);
+      set({ error: `Failed to update column: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
   deleteColumn: async (columnId: string) => {
-    const board = get().currentBoard;
-    if (!board) return;
-
-    const columns = board.columns || [];
-    const updatedColumns = columns.filter((col) => col.id !== columnId);
+    const { currentBoard } = get();
+    if (!currentBoard) {
+      console.error('deleteColumn: Missing currentBoard');
+      return;
+    }
 
     try {
-      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
-      const normalizedBoard = ensureColumns(updatedBoard);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-        currentBoard: normalizedBoard,
-      }));
+      const existingColumns = currentBoard.columns || [];
+      const columns = existingColumns.filter((col) => col.id !== columnId);
+
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      console.error('deleteColumn: Error deleting column', error);
+      set({ error: `Failed to delete column: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
   createCard: async (columnId: string, title: string) => {
-    const board = get().currentBoard;
-    if (!board) return;
-
-    const columns = board.columns || [];
-    const newCard: Card = {
-      id: generateShortId(),
-      columnId,
-      title,
-      labels: [],
-      priority: 'medium',
-      order: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userId: board.userId,
-      sharedWith: [],
-    };
-
-    const updatedColumns = columns.map((col) =>
-      col.id === columnId
-        ? { ...col, cards: [newCard, ...(col.cards || [])] }
-        : col
-    );
+    const { currentBoard, currentUser } = get();
+    if (!currentBoard || !currentUser) {
+      console.error('createCard: Missing currentBoard or currentUser', { currentBoard: !!currentBoard, currentUser: !!currentUser });
+      return;
+    }
 
     try {
-      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
-      const normalizedBoard = ensureColumns(updatedBoard);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-        currentBoard: normalizedBoard,
-      }));
+      const existingColumns = currentBoard.columns || [];
+      const column = existingColumns.find((c) => c.id === columnId);
+      if (!column) {
+        console.error('createCard: Column not found', columnId);
+        return;
+      }
+
+      const cardId = id();
+      const existingCards = column.cards || [];
+      const newCard = {
+        id: cardId,
+        columnId,
+        title,
+        labels: [],
+        priority: 'medium' as const,
+        order: existingCards.length,
+        userId: currentUser.id,
+        sharedWith: [],
+        createdAt: now(),
+        updatedAt: now(),
+      };
+
+      const columns = existingColumns.map((col) =>
+        col.id === columnId
+          ? { ...col, cards: [...existingCards, newCard], updatedAt: now() }
+          : col
+      );
+
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      console.error('createCard: Error creating card', error);
+      set({ error: `Failed to create card: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
-  updateCard: async (cardId: string, updates: Partial<Card>) => {
-    const board = get().currentBoard;
-    if (!board) return;
-
-    const columns = board.columns || [];
-    const updatedColumns = columns.map((col) => ({
-      ...col,
-      cards: (col.cards || []).map((card) =>
-        card.id === cardId ? { ...card, ...updates, updatedAt: new Date().toISOString() } : card
-      ),
-    }));
+  updateCard: async (cardId: string, updates: Partial<Board['columns'][0]['cards'][0]>) => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
 
     try {
-      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
-      const normalizedBoard = ensureColumns(updatedBoard);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-        currentBoard: normalizedBoard,
+      const columns = currentBoard.columns.map((col) => ({
+        ...col,
+        cards: col.cards.map((card) =>
+          card.id === cardId ? { ...card, ...updates, updatedAt: now() } : card
+        ),
       }));
+
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to update card' });
     }
   },
 
   deleteCard: async (cardId: string) => {
-    const board = get().currentBoard;
-    if (!board) return;
-
-    const columns = board.columns || [];
-    const updatedColumns = columns.map((col) => ({
-      ...col,
-      cards: (col.cards || []).filter((card) => card.id !== cardId),
-    }));
+    const { currentBoard } = get();
+    if (!currentBoard) return;
 
     try {
-      const { board: updatedBoard } = await api.boards.update(board.id, { columns: updatedColumns });
-      const normalizedBoard = ensureColumns(updatedBoard);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-        currentBoard: normalizedBoard,
+      const columns = currentBoard.columns.map((col) => ({
+        ...col,
+        cards: col.cards.filter((card) => card.id !== cardId),
       }));
+
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to delete card' });
     }
   },
 
-  moveCard: (cardId: string, fromColumnId: string, toColumnId: string, newIndex: number) => {
-    const board = get().currentBoard;
-    if (!board) return;
+  moveCard: async (cardId: string, fromColumnId: string, toColumnId: string, newIndex: number) => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
 
-    const columns = board.columns || [];
-    let movedCard: Card | null = null;
+    try {
+      const fromColumn = currentBoard.columns.find((c) => c.id === fromColumnId);
+      const toColumn = currentBoard.columns.find((c) => c.id === toColumnId);
+      if (!fromColumn || !toColumn) return;
 
-    const updatedColumns = columns.map((col) => {
-      if (col.id === fromColumnId) {
-        const cards = col.cards || [];
-        const cardIndex = cards.findIndex((c) => c.id === cardId);
-        if (cardIndex !== -1) {
-          movedCard = { ...cards[cardIndex], columnId: toColumnId, order: newIndex };
-          return {
-            ...col,
-            cards: cards.filter((c) => c.id !== cardId),
-          };
+      const cardIndex = fromColumn.cards.findIndex((c) => c.id === cardId);
+      if (cardIndex === -1) return;
+
+      const [movedCard] = fromColumn.cards.splice(cardIndex, 1);
+      movedCard.columnId = toColumnId;
+
+      const destCards = [...toColumn.cards];
+      destCards.splice(newIndex, 0, movedCard);
+
+      const columns = currentBoard.columns.map((col) => {
+        if (col.id === fromColumnId) {
+          return { ...col, cards: fromColumn.cards, updatedAt: now() };
         }
-      }
-      return col;
-    });
+        if (col.id === toColumnId) {
+          return { ...col, cards: destCards, updatedAt: now() };
+        }
+        return col;
+      });
 
-    if (!movedCard) return;
-
-    const finalColumns = updatedColumns.map((col) => {
-      if (col.id === toColumnId && movedCard) {
-        const cards = col.cards || [];
-        const newCards = [...cards];
-        newCards.splice(newIndex, 0, movedCard);
-        return { ...col, cards: newCards };
-      }
-      return col;
-    });
-
-    const updatedBoard = { ...board, columns: finalColumns, updatedAt: new Date().toISOString() };
-    const normalizedBoard = ensureColumns(updatedBoard);
-
-    set((state) => ({
-      boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-      currentBoard: normalizedBoard,
-    }));
-
-    api.boards.update(board.id, { columns: finalColumns }).catch((error) => {
-      console.error('Failed to persist card move:', error);
-      get().fetchBoard(board.id);
-    });
-  },
-
-  moveColumn: (columnId: string, newIndex: number) => {
-    const board = get().currentBoard;
-    if (!board) return;
-
-    const columns = [...(board.columns || [])];
-    const oldIndex = columns.findIndex((c) => c.id === columnId);
-    if (oldIndex === -1) return;
-
-    const [removed] = columns.splice(oldIndex, 1);
-    columns.splice(newIndex, 0, removed);
-
-    const updatedColumns = columns.map((col, index) => ({ ...col, order: index }));
-    const updatedBoard = { ...board, columns: updatedColumns, updatedAt: new Date().toISOString() };
-    const normalizedBoard = ensureColumns(updatedBoard);
-
-    set((state) => ({
-      boards: state.boards.map((b) => (b.id === board.id ? normalizedBoard : b)),
-      currentBoard: normalizedBoard,
-    }));
-
-    api.boards.update(board.id, { columns: updatedColumns }).catch((error) => {
-      console.error('Failed to persist column move:', error);
-      get().fetchBoard(board.id);
-    });
-  },
-
-  shareBoard: async (boardId: string, userId: string, permission?: SharePermission) => {
-    try {
-      const { board } = await api.boards.share(boardId, userId, permission);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to move card' });
     }
   },
 
-  unshareBoard: async (boardId: string, userId: string) => {
-    try {
-      const { board } = await api.boards.unshare(boardId, userId);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+  moveColumn: async (columnId: string, newIndex: number) => {
+    const { currentBoard } = get();
+    if (!currentBoard) {
+      console.error('moveColumn: Missing currentBoard');
+      return;
     }
-  },
 
-  updateBoardPermission: async (boardId: string, userId: string, permission: SharePermission) => {
     try {
-      const { board } = await api.boards.updatePermission(boardId, userId, permission);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
-    }
-  },
+      const existingColumns = currentBoard.columns || [];
+      const columns = [...existingColumns];
+      const oldIndex = columns.findIndex((c) => c.id === columnId);
+      if (oldIndex === -1) return;
 
-  shareColumn: async (boardId: string, columnId: string, userId: string, permission?: SharePermission) => {
-    try {
-      const { board } = await api.boards.shareColumn(boardId, columnId, userId, permission);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
-    }
-  },
+      const [movedColumn] = columns.splice(oldIndex, 1);
+      columns.splice(newIndex, 0, movedColumn);
 
-  unshareColumn: async (boardId: string, columnId: string, userId: string) => {
-    try {
-      const { board } = await api.boards.unshareColumn(boardId, columnId, userId);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
+      // Update order property for all columns to match their new positions
+      const columnsWithUpdatedOrder = columns.map((col, index) => ({
+        ...col,
+        order: index,
+        updatedAt: now(),
       }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
-    }
-  },
 
-  updateColumnPermission: async (boardId: string, columnId: string, userId: string, permission: SharePermission) => {
-    try {
-      const { board } = await api.boards.updateColumnPermission(boardId, columnId, userId, permission);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
+      await db.transact([
+        db.tx.boards[currentBoard.id].update({ 
+          columns: columnsWithUpdatedOrder, 
+          updatedAt: now() 
+        }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
-    }
-  },
-
-  shareCard: async (boardId: string, columnId: string, cardId: string, userId: string, permission?: SharePermission) => {
-    try {
-      const { board } = await api.boards.shareCard(boardId, columnId, cardId, userId, permission);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
-    }
-  },
-
-  unshareCard: async (boardId: string, columnId: string, cardId: string, userId: string) => {
-    try {
-      const { board } = await api.boards.unshareCard(boardId, columnId, cardId, userId);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
-    }
-  },
-
-  updateCardPermission: async (boardId: string, columnId: string, cardId: string, userId: string, permission: SharePermission) => {
-    try {
-      const { board } = await api.boards.updateCardPermission(boardId, columnId, cardId, userId, permission);
-      const normalizedBoard = ensureColumns(board);
-      
-      set((state) => ({
-        boards: state.boards.map((b) => (b.id === boardId ? normalizedBoard : b)),
-        currentBoard: state.currentBoard?.id === boardId ? normalizedBoard : state.currentBoard,
-      }));
-    } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      console.error('moveColumn: Error moving column', error);
+      set({ error: `Failed to move column: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
   createLabel: async (name: string, color: string) => {
+    const { currentUser } = get();
+    if (!currentUser) return;
+
     try {
-      const { label } = await api.labels.create(name, color);
-      set((state) => ({ labels: [...state.labels, label] }));
+      await db.transact([
+        db.tx.labels[id()].update({
+          name,
+          color,
+          userId: currentUser.id,
+          createdAt: now(),
+        }),
+      ]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to create label' });
     }
   },
 
-  updateLabel: async (id: string, data: Partial<Label>) => {
+  updateLabel: async (labelId: string, data: Partial<Label>) => {
     try {
-      const { label } = await api.labels.update(id, data);
-      set((state) => ({
-        labels: state.labels.map((l) => (l.id === id ? label : l)),
-      }));
+      await db.transact([db.tx.labels[labelId].update(data)]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to update label' });
     }
   },
 
-  deleteLabel: async (id: string) => {
+  deleteLabel: async (labelId: string) => {
     try {
-      await api.labels.delete(id);
-      set((state) => ({
-        labels: state.labels.filter((l) => l.id !== id),
-      }));
+      await db.transact([db.tx.labels[labelId].delete()]);
     } catch (error) {
-      set({ error: (error as Error).message });
-      throw error;
+      set({ error: 'Failed to delete label' });
     }
   },
 
-  clearError: () => set({ error: null }),
-  
-  clearCurrentBoard: () => set({ currentBoard: null }),
+  shareBoard: async (boardId: string, userId: string, permission: 'read' | 'write') => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
+
+    try {
+      const sharedWith = [...(currentBoard.sharedWith || [])];
+      const existingIndex = sharedWith.findIndex((s) => s.userId === userId);
+
+      if (existingIndex !== -1) {
+        sharedWith[existingIndex].permission = permission;
+      } else {
+        sharedWith.push({ userId, permission });
+      }
+
+      await db.transact([
+        db.tx.boards[boardId].update({ sharedWith, updatedAt: now() }),
+      ]);
+    } catch (error) {
+      set({ error: 'Failed to share board' });
+    }
+  },
+
+  unshareBoard: async (boardId: string, userId: string) => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
+
+    try {
+      const sharedWith = (currentBoard.sharedWith || []).filter((s) => s.userId !== userId);
+
+      await db.transact([
+        db.tx.boards[boardId].update({ sharedWith, updatedAt: now() }),
+      ]);
+    } catch (error) {
+      set({ error: 'Failed to unshare board' });
+    }
+  },
+
+  updateBoardPermission: async (boardId: string, userId: string, permission: 'read' | 'write') => {
+    await get().shareBoard(boardId, userId, permission);
+  },
+
+  shareColumn: async (boardId: string, columnId: string, userId: string, permission: 'read' | 'write') => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
+
+    try {
+      const columns = currentBoard.columns.map((col) => {
+        if (col.id === columnId) {
+          const sharedWith = [...(col.sharedWith || [])];
+          const existingIndex = sharedWith.findIndex((s) => s.userId === userId);
+
+          if (existingIndex !== -1) {
+            sharedWith[existingIndex].permission = permission;
+          } else {
+            sharedWith.push({ userId, permission });
+          }
+
+          return { ...col, sharedWith, updatedAt: now() };
+        }
+        return col;
+      });
+
+      await db.transact([
+        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+      ]);
+    } catch (error) {
+      set({ error: 'Failed to share column' });
+    }
+  },
+
+  unshareColumn: async (boardId: string, columnId: string, userId: string) => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
+
+    try {
+      const columns = currentBoard.columns.map((col) => {
+        if (col.id === columnId) {
+          const sharedWith = (col.sharedWith || []).filter((s) => s.userId !== userId);
+          return { ...col, sharedWith, updatedAt: now() };
+        }
+        return col;
+      });
+
+      await db.transact([
+        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+      ]);
+    } catch (error) {
+      set({ error: 'Failed to unshare column' });
+    }
+  },
+
+  updateColumnPermission: async (boardId: string, columnId: string, userId: string, permission: 'read' | 'write') => {
+    await get().shareColumn(boardId, columnId, userId, permission);
+  },
+
+  shareCard: async (boardId: string, columnId: string, cardId: string, userId: string, permission: 'read' | 'write') => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
+
+    try {
+      const columns = currentBoard.columns.map((col) => {
+        if (col.id === columnId) {
+          const cards = col.cards.map((card) => {
+            if (card.id === cardId) {
+              const sharedWith = [...(card.sharedWith || [])];
+              const existingIndex = sharedWith.findIndex((s) => s.userId === userId);
+
+              if (existingIndex !== -1) {
+                sharedWith[existingIndex].permission = permission;
+              } else {
+                sharedWith.push({ userId, permission });
+              }
+
+              return { ...card, sharedWith, updatedAt: now() };
+            }
+            return card;
+          });
+          return { ...col, cards, updatedAt: now() };
+        }
+        return col;
+      });
+
+      await db.transact([
+        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+      ]);
+    } catch (error) {
+      set({ error: 'Failed to share card' });
+    }
+  },
+
+  unshareCard: async (boardId: string, columnId: string, cardId: string, userId: string) => {
+    const { currentBoard } = get();
+    if (!currentBoard) return;
+
+    try {
+      const columns = currentBoard.columns.map((col) => {
+        if (col.id === columnId) {
+          const cards = col.cards.map((card) => {
+            if (card.id === cardId) {
+              const sharedWith = (card.sharedWith || []).filter((s) => s.userId !== userId);
+              return { ...card, sharedWith, updatedAt: now() };
+            }
+            return card;
+          });
+          return { ...col, cards, updatedAt: now() };
+        }
+        return col;
+      });
+
+      await db.transact([
+        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+      ]);
+    } catch (error) {
+      set({ error: 'Failed to unshare card' });
+    }
+  },
+
+  updateCardPermission: async (boardId: string, columnId: string, cardId: string, userId: string, permission: 'read' | 'write') => {
+    await get().shareCard(boardId, columnId, cardId, userId, permission);
+  },
+
+  setCurrentBoard: (board: Board | null) => {
+    set({ currentBoard: board });
+  },
+
+  clearCurrentBoard: () => {
+    set({ currentBoard: null });
+  },
+
+  setError: (error: string | null) => {
+    set({ error });
+  },
 }));
+
+// Helper hooks for querying data
+export function useBoards() {
+  const queryResult = db.useQuery({ boards: {} }) || {};
+  
+  // Check different possible structures
+  const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
+  const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
+  const error = (queryResult as { error?: Error })?.error;
+
+  const rawBoards = (result as { boards?: unknown[] })?.boards || [];
+  const boards = rawBoards.map((b: unknown) => convertBoardTimestamps(b as Board));
+
+  return { boards, isLoading, error };
+}
+
+export function useBoard(boardId: string) {
+  const queryResult = db.useQuery({ boards: {} }) || {};
+  
+  // Check different possible structures (matching useBoards logic)
+  const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
+  const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
+  const error = (queryResult as { error?: Error })?.error;
+
+  const allBoards = (result as { boards?: Board[] })?.boards || [];
+  const board = allBoards
+    .filter((b): b is Board => b.id === boardId)
+    .map(convertBoardTimestamps)[0] || null;
+
+  return { board, isLoading, error };
+}
+
+export function useLabels() {
+  const { result, isLoading, error } = db.useQuery({ labels: {} });
+  
+  const labels = result.labels 
+    ? (result.labels as Label[]).map((l) => ({
+        ...l,
+        createdAt: toISOTimestamp(l.createdAt),
+      }))
+    : [];
+    
+  return { labels, isLoading, error };
+}
+
+export function useUsers() {
+  const queryResult = db.useQuery({ $users: {} }) || {};
+  const result = (queryResult as { result?: unknown })?.result;
+  const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
+  const error = (queryResult as { error?: Error })?.error;
+
+  const users = (result as { $users?: User[] })?.$users
+    ? ((result as { $users: User[] }).$users as User[]).map((u) => ({
+        ...u,
+        createdAt: toISOTimestamp(u.createdAt),
+      }))
+    : [];
+
+  return { users, isLoading, error };
+}

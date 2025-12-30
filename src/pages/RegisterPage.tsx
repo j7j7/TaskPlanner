@@ -1,38 +1,45 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 
 export function RegisterPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [code, setCode] = useState('');
   const [formError, setFormError] = useState('');
-  const { register, isLoading, error, clearError } = useAuth();
+  const { sendMagicCode, verifyMagicCode, isLoading, error } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    clearError();
+  const step = searchParams.get('step') || 'email';
+  const email = searchParams.get('email') || '';
+  const showCodeInput = step === 'code';
+
+  const handleSendCode = () => {
+    setFormError('');
+    console.log('Submitting email:', email);
+    if (email) {
+      sendMagicCode(email).catch(e => console.log('Magic code send failed:', e));
+    }
+    setSearchParams({ step: 'code', email }, { replace: true });
+    console.log('URL updated to step=code');
+  };
+
+  const handleVerifyCode = () => {
     setFormError('');
 
-    if (password !== confirmPassword) {
-      setFormError('Passwords do not match');
-      return;
-    }
+    verifyMagicCode(email, code)
+      .then(() => navigate('/', { replace: true }))
+      .catch(err => {
+        console.error('Verification failed:', err);
+        setFormError('Invalid code. Please try again.');
+      });
+  };
 
-    if (password.length < 4) {
-      setFormError('Password must be at least 4 characters');
-      return;
-    }
-
-    try {
-      await register(username, password);
-      navigate('/', { replace: true });
-    } catch {
-      // Error is handled by the hook
-    }
+  const goBack = () => {
+    setSearchParams({}, { replace: true });
+    setCode('');
+    setFormError('');
   };
 
   return (
@@ -46,59 +53,70 @@ export function RegisterPage() {
         </div>
 
         <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Choose a username"
-              required
-              autoComplete="username"
-            />
+          <div style={{ display: showCodeInput ? 'none' : 'block' }}>
+            <p className="text-sm text-textMuted mb-4">Enter email to receive magic code</p>
+            <div className="space-y-4">
+              <Input
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setSearchParams({ email: e.target.value }, { replace: true })}
+                placeholder="Enter your email"
+                required
+                autoComplete="email"
+              />
 
-            <Input
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Create a password (min 4 characters)"
-              required
-              autoComplete="new-password"
-            />
+              {(error || formError) && (
+                <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm">
+                  {formError || error}
+                </div>
+              )}
 
-            <Input
-              label="Confirm Password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm your password"
-              required
-              autoComplete="new-password"
-            />
+              <Button onClick={handleSendCode} className="w-full" loading={isLoading}>
+                Send Magic Code
+              </Button>
+            </div>
+          </div>
 
-            {(error || formError) && (
-              <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm">
-                {formError || error}
-              </div>
-            )}
+          <div style={{ display: showCodeInput ? 'block' : 'none' }}>
+            <p className="text-sm text-textMuted mb-4">
+              Code sent to <span className="text-accent">{email}</span>
+            </p>
+            <div className="space-y-4">
+              <Input
+                label="Magic Code"
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Enter 6-digit code"
+                required
+                autoFocus
+              />
 
-            <Button
-              type="submit"
-              className="w-full"
-              loading={isLoading}
-            >
-              Create Account
-            </Button>
-          </form>
+              {(error || formError) && (
+                <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm">
+                  {formError || error}
+                </div>
+              )}
+
+              <Button onClick={handleVerifyCode} className="w-full" loading={isLoading}>
+                Verify & Sign In
+              </Button>
+
+              <button
+                type="button"
+                onClick={goBack}
+                className="w-full text-sm text-textMuted hover:text-text transition-colors"
+              >
+                Wrong email? Go back
+              </button>
+            </div>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-textMuted text-sm">
               Already have an account?{' '}
-              <Link
-                to="/login"
-                className="text-accent hover:underline transition-colors"
-              >
+              <Link to="/login" className="text-accent hover:underline transition-colors">
                 Sign in
               </Link>
             </p>

@@ -1,11 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import { useBoardStore } from '../store/useBoardStore';
+import { useBoardStore, useBoard, useUsers } from '../store/useBoardStore';
 import { Board } from '../components/board/Board';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
-import { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
 
 function getUserColor(userId: string): string {
   const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
@@ -18,25 +16,44 @@ function getUserColor(userId: string): string {
 
 export function BoardPage() {
   const { id } = useParams<{ id: string }>();
-  const { currentBoard, fetchBoard, fetchLabels, fetchUsers, createColumn, error, clearError, clearCurrentBoard, users } = useBoardStore();
-  const { user } = useAuth();
+  const { createColumn, setCurrentBoard, clearCurrentBoard, currentBoard } = useBoardStore();
+  const { board, isLoading, error } = useBoard(id || '');
+  const { users } = useUsers();
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [newColumnColor, setNewColumnColor] = useState('#3b82f6');
   const [isCreating, setIsCreating] = useState(false);
+  const prevBoardIdRef = useRef<string | null>(null);
+  const prevUpdatedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (id) {
+    // Update currentBoard whenever board data changes (reactive updates from InstantDB)
+    if (board) {
+      const boardIdChanged = board.id !== prevBoardIdRef.current;
+      const boardUpdated = board.updatedAt !== prevUpdatedAtRef.current;
+      
+      // Update if it's a different board or if the board data has changed
+      if (boardIdChanged || boardUpdated) {
+        prevBoardIdRef.current = board.id;
+        prevUpdatedAtRef.current = board.updatedAt;
+        // Sync currentBoard with the latest board data from InstantDB
+        setCurrentBoard(board);
+      }
+    } else if (prevBoardIdRef.current) {
+      // Board was deleted or doesn't exist
       clearCurrentBoard();
-      fetchBoard(id);
-      fetchLabels();
-      fetchUsers();
+      prevBoardIdRef.current = null;
+      prevUpdatedAtRef.current = null;
     }
     
     return () => {
-      clearCurrentBoard();
+      if (prevBoardIdRef.current === id) {
+        clearCurrentBoard();
+        prevBoardIdRef.current = null;
+        prevUpdatedAtRef.current = null;
+      }
     };
-  }, [id, fetchBoard, fetchLabels, fetchUsers, clearCurrentBoard]);
+  }, [board?.id, board?.updatedAt, id, setCurrentBoard, clearCurrentBoard]);
 
   const handleAddColumn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +66,9 @@ export function BoardPage() {
     setIsAddColumnModalOpen(false);
   };
 
-  const isShared = currentBoard && (currentBoard.sharedWith?.length ?? 0) > 0;
+  const isShared = board && (board.sharedWith?.length ?? 0) > 0;
 
-  const owner = currentBoard ? (users.find(u => u.id === currentBoard.userId) || { username: 'Unknown' }) : null;
+  const owner = board ? (users.find(u => u.id === board.userId) || { username: 'Unknown' }) : null;
 
   if (!id) {
     return <Navigate to="/" replace />;
@@ -62,7 +79,7 @@ export function BoardPage() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-danger mb-4">{error}</p>
-          <Button onClick={() => { clearError(); fetchBoard(id); }}>
+          <Button onClick={() => window.location.reload()}>
             Retry
           </Button>
         </div>
@@ -77,18 +94,18 @@ export function BoardPage() {
           <div className="min-w-0 flex items-center gap-3">
             <div className="min-w-0">
               <h1 className="text-lg sm:text-2xl font-display font-bold text-text truncate">
-                {currentBoard?.title || 'Loading...'}
+                {board?.title || 'Loading...'}
               </h1>
-              {currentBoard && (
+              {board && (
                 <p className="text-xs sm:text-sm text-textMuted mt-1">
-                  {currentBoard.columns?.length ?? 0} columns
+                  {board.columns?.length ?? 0} columns
                 </p>
               )}
             </div>
             {isShared && owner && (
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: getUserColor(currentBoard.userId) }}
+                style={{ backgroundColor: getUserColor(board?.userId || '') }}
                 title={`${owner.username} (Owner)`}
               >
                 <span className="text-background text-sm font-bold">
@@ -112,14 +129,18 @@ export function BoardPage() {
       </header>
 
       <div className="flex-1 overflow-auto p-3 sm:p-6">
-        {currentBoard ? (
+        {board ? (
           <Board />
-        ) : (
+        ) : isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin" />
               <p className="text-textMuted">Loading board...</p>
             </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-textMuted">Board not found</p>
           </div>
         )}
       </div>

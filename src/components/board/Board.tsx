@@ -6,8 +6,9 @@ import type { Card as CardType } from '../../types';
 import { useBoardStore } from '../../store/useBoardStore';
 
 export function Board() {
-  const { currentBoard, moveCard } = useBoardStore();
+  const { currentBoard, moveCard, moveColumn } = useBoardStore();
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -33,6 +34,14 @@ export function Board() {
     const { active } = event;
     const activeId = active.id as string;
     
+    // Check if it's a column being dragged
+    const column = columns.find((col) => col.id === activeId);
+    if (column) {
+      setActiveColumnId(column.id);
+      return;
+    }
+    
+    // Otherwise, it's a card
     for (const column of columns) {
       const card = column.cards?.find((c) => c.id === activeId);
       if (card) {
@@ -45,12 +54,26 @@ export function Board() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCard(null);
+    setActiveColumnId(null);
 
     if (!over) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    // Check if it's a column being dragged
+    const activeColumn = columns.find((col) => col.id === activeId);
+    if (activeColumn) {
+      // Column is being reordered
+      const overColumn = columns.find((col) => col.id === overId);
+      if (overColumn && activeId !== overId) {
+        const newIndex = columns.findIndex((col) => col.id === overId);
+        moveColumn(activeId, newIndex);
+      }
+      return;
+    }
+
+    // Otherwise, it's a card being dragged
     const fromColumn = columns.find((col) =>
       col.cards?.some((card) => card.id === activeId)
     );
@@ -102,6 +125,16 @@ export function Board() {
         {activeCard ? (
           <div className="task-card dragging cursor-grabbing">
             <h4 className="font-medium text-text">{activeCard.title}</h4>
+          </div>
+        ) : activeColumnId ? (
+          <div className="board-column flex flex-col h-full max-h-full shrink-0 w-72 opacity-90 cursor-grabbing">
+            <div className="board-column-header flex flex-col gap-2 flex-shrink-0 p-3 bg-surface border border-border rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <span className="font-display font-semibold text-text">
+                  {columns.find((c) => c.id === activeColumnId)?.title}
+                </span>
+              </div>
+            </div>
           </div>
         ) : null}
       </DragOverlay>

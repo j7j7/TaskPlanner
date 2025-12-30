@@ -19,7 +19,7 @@ function getBoardColor(boardId: string): string {
 
 export function Sidebar() {
   const { user, logout } = useAuth();
-  const { boards, currentBoard, fetchBoards, createBoard, updateBoard, deleteBoard, users, fetchUsers, shareBoard, unshareBoard } = useBoardStore();
+  const { boards, currentBoard, fetchBoards, createBoard, updateBoard, deleteBoard, fetchUsers, shareBoard } = useBoardStore();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -104,14 +104,16 @@ export function Sidebar() {
     setSharingBoardId(boardId);
   };
 
-  const handleShare = async (userId: string) => {
+  const handleShare = async (userId: string, permission?: 'read' | 'write') => {
     if (sharingBoardId) {
-      await shareBoard(sharingBoardId, userId);
+      await shareBoard(sharingBoardId, userId, permission);
     }
   };
 
-  const handleUnshare = async (boardId: string, userId: string) => {
-    await unshareBoard(boardId, userId);
+  const handleUpdatePermission = async (userId: string, permission: 'read' | 'write') => {
+    if (sharingBoardId) {
+      await shareBoard(sharingBoardId, userId, permission);
+    }
   };
 
   const handleExport = () => {
@@ -446,8 +448,9 @@ export function Sidebar() {
         isOpen={!!sharingBoardId}
         onClose={() => setSharingBoardId(null)}
         onSelectUser={handleShare}
+        onUpdatePermission={handleUpdatePermission}
         title="Share Board"
-        selectedUserIds={boards.find(b => b.id === sharingBoardId)?.sharedWith || []}
+        selectedUsers={boards.find(b => b.id === sharingBoardId)?.sharedWith || []}
         mode="manage"
       />
     </aside>

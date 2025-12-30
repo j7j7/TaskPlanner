@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { Column } from './Column';
 import type { Card as CardType } from '../../types';
 import { useBoardStore } from '../../store/useBoardStore';

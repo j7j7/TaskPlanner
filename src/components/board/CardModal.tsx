@@ -9,6 +9,7 @@ interface CardModalProps {
   onClose: () => void;
   card: CardType;
   labels: Label[];
+  readOnly?: boolean;
 }
 
 const PRIORITIES = [
@@ -18,7 +19,7 @@ const PRIORITIES = [
   { value: 'urgent', label: 'Urgent', color: '#ef4444' },
 ] as const;
 
-export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
+export function CardModal({ isOpen, onClose, card, labels, readOnly = false }: CardModalProps) {
   const { updateCard, deleteCard } = useBoardStore();
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description || '');
@@ -38,7 +39,7 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
   }, [card]);
 
   const handleSave = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || readOnly) return;
 
     await updateCard(card.id, {
       title: title.trim(),
@@ -57,6 +58,7 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
   };
 
   const toggleLabel = (labelId: string) => {
+    if (readOnly) return;
     setSelectedLabels((prev) =>
       prev.includes(labelId)
         ? prev.filter((id) => id !== labelId)
@@ -65,7 +67,7 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Card" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={readOnly ? 'View Card' : 'Edit Card'} size="md">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
@@ -77,6 +79,7 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
             onChange={(e) => setTitle(e.target.value)}
             className="input"
             placeholder="Card title..."
+            disabled={readOnly}
           />
         </div>
 
@@ -89,6 +92,7 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
             onChange={(e) => setDescription(e.target.value)}
             className="input min-h-[100px] resize-y"
             placeholder="Add a description..."
+            disabled={readOnly}
           />
         </div>
 
@@ -101,16 +105,17 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
               <button
                 key={p.value}
                 type="button"
-                onClick={() => setPriority(p.value)}
+                onClick={() => !readOnly && setPriority(p.value)}
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all border-2 ${
                   priority === p.value
                     ? 'border-current'
                     : 'border-transparent hover:border-border'
-                }`}
+                } ${readOnly ? 'cursor-default opacity-50' : ''}`}
                 style={{
                   backgroundColor: priority === p.value ? `${p.color}20` : 'transparent',
                   color: p.color,
                 }}
+                disabled={readOnly}
               >
                 {p.label}
               </button>
@@ -132,13 +137,14 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
                   selectedLabels.includes(label.id)
                     ? 'border-current'
                     : 'border-transparent hover:border-border/50'
-                }`}
+                } ${readOnly ? 'cursor-default opacity-70' : ''}`}
                 style={{
                   backgroundColor: selectedLabels.includes(label.id)
                     ? `${label.color}30`
                     : `${label.color}15`,
                   color: label.color,
                 }}
+                disabled={readOnly}
               >
                 {label.name}
               </button>
@@ -155,23 +161,26 @@ export function CardModal({ isOpen, onClose, card, labels }: CardModalProps) {
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             className="input"
+            disabled={readOnly}
           />
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-border">
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={handleDelete}
-            loading={isDeleting}
-          >
-            Delete Card
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
+          {!readOnly && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleDelete}
+              loading={isDeleting}
+            >
+              Delete Card
             </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
+          )}
+          <div className={`flex gap-2 ${!readOnly ? '' : 'w-full justify-end'}`}>
+            <Button variant="ghost" onClick={onClose}>
+              {readOnly ? 'Close' : 'Cancel'}
+            </Button>
+            {!readOnly && <Button onClick={handleSave}>Save Changes</Button>}
           </div>
         </div>
       </div>

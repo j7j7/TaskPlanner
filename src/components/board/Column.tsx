@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { Column as ColumnType } from '../../types';
+import type { Column as ColumnType, SharedUser } from '../../types';
 import { Card } from './Card';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -61,9 +61,15 @@ export function Column({ column }: ColumnProps) {
     }
   };
 
-  const handleShare = async (userId: string) => {
+  const handleShare = async (userId: string, permission?: 'read' | 'write') => {
     if (currentBoard) {
-      await shareColumn(currentBoard.id, column.id, userId);
+      await shareColumn(currentBoard.id, column.id, userId, permission);
+    }
+  };
+
+  const handleUpdatePermission = async (userId: string, permission: 'read' | 'write') => {
+    if (currentBoard) {
+      await shareColumn(currentBoard.id, column.id, userId, permission);
     }
   };
 
@@ -74,9 +80,9 @@ export function Column({ column }: ColumnProps) {
   };
 
   const isOwner = column.userId === user?.id;
-  const sharedUserIds = column.sharedWith || [];
-  const allUserIds = [column.userId, ...sharedUserIds].filter(Boolean);
-  const ownerUser = users.find(u => u.id === column.userId);
+  const sharedUsers: SharedUser[] = column.sharedWith || [];
+  const canWrite = isOwner || sharedUsers.some(su => su.userId === user?.id && su.permission === 'write');
+  const allUserIds = [column.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
 
   const handleRemoveSharedUser = async (userId: string) => {
     await handleUnshare(userId);
@@ -94,7 +100,7 @@ export function Column({ column }: ColumnProps) {
           style={{ borderColor: column.color }}
         >
           <div className="flex items-center justify-between">
-            {isEditing ? (
+            {canWrite && isEditing ? (
               <input
                 type="text"
                 value={editTitle}
@@ -106,8 +112,8 @@ export function Column({ column }: ColumnProps) {
               />
             ) : (
               <span
-                className="cursor-pointer hover:text-accent transition-colors"
-                onClick={() => setIsEditing(true)}
+                className={`cursor-pointer hover:text-accent transition-colors ${canWrite ? '' : 'cursor-default'}`}
+                onClick={() => canWrite && setIsEditing(true)}
               >
                 {column.title}
               </span>
@@ -118,21 +124,24 @@ export function Column({ column }: ColumnProps) {
               </span>
               <button
                 onClick={() => setIsShareModalOpen(true)}
-                className="text-textMuted hover:text-accent transition-colors p-1"
-                title="Share column"
+                className={`${isOwner ? 'text-textMuted hover:text-accent' : 'opacity-50 cursor-not-allowed'} transition-colors p-1`}
+                title={isOwner ? "Share column" : "Only owner can share"}
+                disabled={!isOwner}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
               </button>
-              <button
-                onClick={handleDeleteColumn}
-                className="text-textMuted hover:text-danger transition-colors p-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              {isOwner && (
+                <button
+                  onClick={handleDeleteColumn}
+                  className="text-textMuted hover:text-danger transition-colors p-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 
@@ -140,6 +149,7 @@ export function Column({ column }: ColumnProps) {
             {allUserIds.map((userId, index) => {
               const u = users.find(x => x.id === userId);
               const isShared = index > 0;
+              const sharedUser = isShared ? sharedUsers[index - 1] : null;
               const canRemove = isShared && isOwner;
               return (
                 <div
@@ -157,6 +167,11 @@ export function Column({ column }: ColumnProps) {
                       {(u?.username || '?').charAt(0).toUpperCase()}
                     </span>
                   </div>
+                  {isShared && sharedUser && (
+                    <span className="absolute -top-2 -right-2 text-[10px]" title={`${sharedUser.permission} access`}>
+                      {sharedUser.permission === 'write' ? '✏️' : '👁️'}
+                    </span>
+                  )}
                   {canRemove && (
                     <button
                       onClick={() => handleRemoveSharedUser(userId)}
@@ -195,7 +210,7 @@ export function Column({ column }: ColumnProps) {
             ))}
           </SortableContext>
 
-          {isAddingCard ? (
+          {canWrite && isAddingCard ? (
             <form onSubmit={handleAddCard} className="space-y-2">
               <input
                 type="text"
@@ -221,7 +236,7 @@ export function Column({ column }: ColumnProps) {
           ) : null}
         </div>
 
-        {!isAddingCard && (
+        {!canWrite || !isAddingCard ? (
           <div className="p-3 border-t border-border flex-shrink-0">
             <button
               onClick={() => setIsAddingCard(true)}
@@ -233,15 +248,16 @@ export function Column({ column }: ColumnProps) {
               Add Card
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
       <UserSelector
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         onSelectUser={handleShare}
+        onUpdatePermission={handleUpdatePermission}
         title="Share Column"
-        selectedUserIds={sharedUserIds}
+        selectedUsers={sharedUsers}
         mode="manage"
       />
     </>

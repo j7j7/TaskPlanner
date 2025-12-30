@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import type { Card as CardType, Label } from '../../types';
+import type { Card as CardType, Label, SharedUser } from '../../types';
 import { CardModal } from './CardModal';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -45,15 +45,24 @@ export function Card({ card, labels }: CardProps) {
   };
 
   const isOwner = card.userId === user?.id;
-  const sharedUserIds = card.sharedWith || [];
-  const allUserIds = [card.userId, ...sharedUserIds].filter(Boolean);
-  const ownerUser = users.find(u => u.id === card.userId);
+  const sharedUsers: SharedUser[] = card.sharedWith || [];
+  const canWrite = isOwner || sharedUsers.some(su => su.userId === user?.id && su.permission === 'write');
+  const allUserIds = [card.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
 
-  const handleShare = async (userId: string) => {
+  const handleShare = async (userId: string, permission?: 'read' | 'write') => {
     if (currentBoard) {
       const column = currentBoard.columns.find(col => col.cards.some(c => c.id === card.id));
       if (column) {
-        await shareCard(currentBoard.id, column.id, card.id, userId);
+        await shareCard(currentBoard.id, column.id, card.id, userId, permission);
+      }
+    }
+  };
+
+  const handleUpdatePermission = async (userId: string, permission: 'read' | 'write') => {
+    if (currentBoard) {
+      const column = currentBoard.columns.find(col => col.cards.some(c => c.id === card.id));
+      if (column) {
+        await shareCard(currentBoard.id, column.id, card.id, userId, permission);
       }
     }
   };
@@ -73,12 +82,13 @@ export function Card({ card, labels }: CardProps) {
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className={`task-card group ${isDragging ? 'dragging' : ''}`}
+        className={`task-card group ${isDragging ? 'dragging' : ''} ${!canWrite ? 'cursor-pointer' : ''}`}
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest('.share-btn')) {
+          const target = e.target as HTMLElement;
+          if (target.closest('.share-btn')) {
             e.stopPropagation();
             setIsShareModalOpen(true);
-          } else {
+          } else if (canWrite) {
             setIsModalOpen(true);
           }
         }}
@@ -94,8 +104,15 @@ export function Card({ card, labels }: CardProps) {
               {card.title}
             </h4>
             <button
-              className="share-btn opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-opacity p-0.5"
-              title="Share card"
+              className={`share-btn opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-opacity p-0.5 ${!isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title={isOwner ? "Share card" : "Only owner can share"}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isOwner) {
+                  setIsShareModalOpen(true);
+                }
+              }}
+              disabled={!isOwner}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -130,6 +147,7 @@ export function Card({ card, labels }: CardProps) {
               {allUserIds.slice(0, 3).map((userId, index) => {
                 const u = users.find(x => x.id === userId);
                 const isShared = index > 0;
+                const sharedUser = isShared ? sharedUsers[index - 1] : null;
                 const canRemove = isShared && isOwner;
                 return (
                   <div
@@ -147,6 +165,11 @@ export function Card({ card, labels }: CardProps) {
                         {(u?.username || '?').charAt(0).toUpperCase()}
                       </span>
                     </div>
+                    {isShared && sharedUser && (
+                      <span className="absolute -top-1.5 -right-1.5 text-[8px]" title={`${sharedUser.permission} access`}>
+                        {sharedUser.permission === 'write' ? '✏️' : '👁️'}
+                      </span>
+                    )}
                     {canRemove && (
                       <button
                         onClick={(e) => {
@@ -188,14 +211,16 @@ export function Card({ card, labels }: CardProps) {
         onClose={() => setIsModalOpen(false)}
         card={card}
         labels={labels}
+        readOnly={!canWrite}
       />
 
       <UserSelector
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         onSelectUser={handleShare}
+        onUpdatePermission={handleUpdatePermission}
         title="Share Card"
-        selectedUserIds={sharedUserIds}
+        selectedUsers={sharedUsers}
         mode="manage"
       />
     </>

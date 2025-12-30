@@ -1,3 +1,10 @@
+export type SharePermission = 'read' | 'write';
+
+export interface SharedUser {
+  userId: string;
+  permission: SharePermission;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -24,7 +31,7 @@ export interface Card {
   createdAt: string;
   updatedAt: string;
   userId: string;
-  sharedWith: string[];
+  sharedWith: SharedUser[];
 }
 
 export interface Column {
@@ -34,7 +41,7 @@ export interface Column {
   order: number;
   cards: Card[];
   userId: string;
-  sharedWith: string[];
+  sharedWith: SharedUser[];
 }
 
 export interface Board {
@@ -44,7 +51,7 @@ export interface Board {
   columns: Column[];
   createdAt: string;
   updatedAt: string;
-  sharedWith: string[];
+  sharedWith: SharedUser[];
 }
 
 export interface ApiError {

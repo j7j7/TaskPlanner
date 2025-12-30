@@ -8,7 +8,7 @@ import { useState } from 'react';
 
 export function BoardPage() {
   const { id } = useParams<{ id: string }>();
-  const { currentBoard, fetchBoard, fetchLabels, fetchUsers, createColumn, error, clearError, clearCurrentBoard, isLoading } = useBoardStore();
+  const { currentBoard, fetchBoard, fetchLabels, fetchUsers, createColumn, error, clearError, clearCurrentBoard } = useBoardStore();
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [newColumnColor, setNewColumnColor] = useState('#3b82f6');

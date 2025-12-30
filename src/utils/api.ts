@@ -69,32 +69,47 @@ export const api = {
       request<{ success: boolean }>(`/boards/${id}`, {
         method: 'DELETE',
       }),
-    share: (boardId: string, userId: string) =>
+    share: (boardId: string, userId: string, permission?: 'read' | 'write') =>
       request<{ board: import('../types').Board }>(`/boards/${boardId}/share`, {
         method: 'POST',
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, permission }),
       }),
     unshare: (boardId: string, userId: string) =>
       request<{ board: import('../types').Board }>(`/boards/${boardId}/share/${userId}`, {
         method: 'DELETE',
       }),
-    shareColumn: (boardId: string, columnId: string, userId: string) =>
+    updatePermission: (boardId: string, userId: string, permission: 'read' | 'write') =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/share/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ permission }),
+      }),
+    shareColumn: (boardId: string, columnId: string, userId: string, permission?: 'read' | 'write') =>
       request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/share`, {
         method: 'POST',
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, permission }),
       }),
     unshareColumn: (boardId: string, columnId: string, userId: string) =>
       request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/share/${userId}`, {
         method: 'DELETE',
       }),
-    shareCard: (boardId: string, columnId: string, cardId: string, userId: string) =>
+    updateColumnPermission: (boardId: string, columnId: string, userId: string, permission: 'read' | 'write') =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/share/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ permission }),
+      }),
+    shareCard: (boardId: string, columnId: string, cardId: string, userId: string, permission?: 'read' | 'write') =>
       request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/cards/${cardId}/share`, {
         method: 'POST',
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, permission }),
       }),
     unshareCard: (boardId: string, columnId: string, cardId: string, userId: string) =>
       request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/cards/${cardId}/share/${userId}`, {
         method: 'DELETE',
+      }),
+    updateCardPermission: (boardId: string, columnId: string, cardId: string, userId: string, permission: 'read' | 'write') =>
+      request<{ board: import('../types').Board }>(`/boards/${boardId}/columns/${columnId}/cards/${cardId}/share/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ permission }),
       }),
   },
   labels: {

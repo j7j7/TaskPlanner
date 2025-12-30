@@ -85,21 +85,58 @@ function ensureCardStructure(card) {
 function migrateBoards(boards) {
   if (!Array.isArray(boards)) return [];
   
-  return boards.map(board => ({
-    ...board,
-    userId: board.userId || null,
-    sharedWith: board.sharedWith || [],
-    columns: (board.columns || []).map(column => ({
-      ...column,
-      userId: column.userId || board.userId,
-      sharedWith: column.sharedWith || [],
-      cards: (column.cards || []).map(card => ({
-        ...card,
-        userId: card.userId || column.userId || board.userId,
-        sharedWith: card.sharedWith || [],
-      })),
-    })),
-  }));
+  return boards.map(board => {
+    const migratedSharedWith = migrateSharedWith(board.sharedWith);
+    
+    return {
+      ...board,
+      userId: board.userId || null,
+      sharedWith: migratedSharedWith,
+      columns: (board.columns || []).map(column => {
+        const columnSharedWith = migrateSharedWith(column.sharedWith);
+        
+        return {
+          ...column,
+          userId: column.userId || board.userId,
+          sharedWith: columnSharedWith,
+          cards: (column.cards || []).map(card => {
+            const cardSharedWith = migrateSharedWith(card.sharedWith);
+            
+            return {
+              ...card,
+              userId: card.userId || column.userId || board.userId,
+              sharedWith: cardSharedWith,
+            };
+          }),
+        };
+      }),
+    };
+  });
+}
+
+function migrateSharedWith(sharedWith) {
+  if (!Array.isArray(sharedWith)) return [];
+  
+  return sharedWith.map(item => {
+    if (typeof item === 'string') {
+      return { userId: item, permission: 'read' };
+    }
+    if (typeof item === 'object' && item.userId && (item.permission === 'read' || item.permission === 'write')) {
+      return item;
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+function hasWriteAccess(sharedWith, userId) {
+  if (!Array.isArray(sharedWith)) return false;
+  const entry = sharedWith.find(s => s.userId === userId);
+  return entry && entry.permission === 'write';
+}
+
+function canAccess(sharedWith, userId) {
+  if (!Array.isArray(sharedWith)) return false;
+  return sharedWith.some(s => s.userId === userId);
 }
 
 export const usersDb = {
@@ -165,7 +202,7 @@ export const boardsDb = {
     const boards = readJson('boards.json') || [];
     const migrated = migrateBoards(boards);
     return migrated
-      .filter(b => b.userId === userId || (b.sharedWith && b.sharedWith.includes(userId)))
+      .filter(b => b.userId === userId || canAccess(b.sharedWith, userId))
       .map(ensureBoardStructure);
   },
   create: (board) => {
@@ -203,17 +240,22 @@ export const boardsDb = {
     const filtered = boards.filter(b => b.id !== id);
     writeJson('boards.json', filtered);
   },
-  shareBoard: (boardId, userId) => {
+  shareBoard: (boardId, userId, permission = 'read') => {
     const boards = readJson('boards.json') || [];
     const index = boards.findIndex(b => b.id === boardId);
     if (index !== -1) {
       const board = ensureBoardStructure(boards[index]);
-      if (!board.sharedWith.includes(userId)) {
-        board.sharedWith.push(userId);
-        board.updatedAt = new Date().toISOString();
-        boards[index] = board;
-        writeJson('boards.json', boards);
+      const existingIndex = board.sharedWith.findIndex(s => s.userId === userId);
+      
+      if (existingIndex !== -1) {
+        board.sharedWith[existingIndex].permission = permission;
+      } else {
+        board.sharedWith.push({ userId, permission });
       }
+      
+      board.updatedAt = new Date().toISOString();
+      boards[index] = board;
+      writeJson('boards.json', boards);
       return board;
     }
     return null;
@@ -223,7 +265,7 @@ export const boardsDb = {
     const index = boards.findIndex(b => b.id === boardId);
     if (index !== -1) {
       const board = ensureBoardStructure(boards[index]);
-      board.sharedWith = board.sharedWith.filter(id => id !== userId);
+      board.sharedWith = board.sharedWith.filter(s => s.userId !== userId);
       board.updatedAt = new Date().toISOString();
       boards[index] = board;
       writeJson('boards.json', boards);
@@ -231,7 +273,7 @@ export const boardsDb = {
     }
     return null;
   },
-  shareColumn: (boardId, columnId, userId) => {
+  shareColumn: (boardId, columnId, userId, permission = 'read') => {
     const boards = readJson('boards.json') || [];
     const index = boards.findIndex(b => b.id === boardId);
     if (index !== -1) {
@@ -239,12 +281,17 @@ export const boardsDb = {
       const columnIndex = board.columns.findIndex(c => c.id === columnId);
       if (columnIndex !== -1) {
         const column = board.columns[columnIndex];
-        if (!column.sharedWith.includes(userId)) {
-          column.sharedWith.push(userId);
-          board.updatedAt = new Date().toISOString();
-          boards[index] = board;
-          writeJson('boards.json', boards);
+        const existingIndex = column.sharedWith.findIndex(s => s.userId === userId);
+        
+        if (existingIndex !== -1) {
+          column.sharedWith[existingIndex].permission = permission;
+        } else {
+          column.sharedWith.push({ userId, permission });
         }
+        
+        board.updatedAt = new Date().toISOString();
+        boards[index] = board;
+        writeJson('boards.json', boards);
       }
       return board;
     }
@@ -258,7 +305,7 @@ export const boardsDb = {
       const columnIndex = board.columns.findIndex(c => c.id === columnId);
       if (columnIndex !== -1) {
         const column = board.columns[columnIndex];
-        column.sharedWith = column.sharedWith.filter(id => id !== userId);
+        column.sharedWith = column.sharedWith.filter(s => s.userId !== userId);
         board.updatedAt = new Date().toISOString();
         boards[index] = board;
         writeJson('boards.json', boards);
@@ -267,7 +314,7 @@ export const boardsDb = {
     }
     return null;
   },
-  shareCard: (boardId, columnId, cardId, userId) => {
+  shareCard: (boardId, columnId, cardId, userId, permission = 'read') => {
     const boards = readJson('boards.json') || [];
     const index = boards.findIndex(b => b.id === boardId);
     if (index !== -1) {
@@ -278,12 +325,17 @@ export const boardsDb = {
         const cardIndex = column.cards.findIndex(c => c.id === cardId);
         if (cardIndex !== -1) {
           const card = column.cards[cardIndex];
-          if (!card.sharedWith.includes(userId)) {
-            card.sharedWith.push(userId);
-            board.updatedAt = new Date().toISOString();
-            boards[index] = board;
-            writeJson('boards.json', boards);
+          const existingIndex = card.sharedWith.findIndex(s => s.userId === userId);
+          
+          if (existingIndex !== -1) {
+            card.sharedWith[existingIndex].permission = permission;
+          } else {
+            card.sharedWith.push({ userId, permission });
           }
+          
+          board.updatedAt = new Date().toISOString();
+          boards[index] = board;
+          writeJson('boards.json', boards);
         }
       }
       return board;
@@ -301,7 +353,7 @@ export const boardsDb = {
         const cardIndex = column.cards.findIndex(c => c.id === cardId);
         if (cardIndex !== -1) {
           const card = column.cards[cardIndex];
-          card.sharedWith = card.sharedWith.filter(id => id !== userId);
+          card.sharedWith = card.sharedWith.filter(s => s.userId !== userId);
           board.updatedAt = new Date().toISOString();
           boards[index] = board;
           writeJson('boards.json', boards);
@@ -310,6 +362,15 @@ export const boardsDb = {
       return board;
     }
     return null;
+  },
+  updateBoardPermission: (boardId, userId, permission) => {
+    return boardsDb.shareBoard(boardId, userId, permission);
+  },
+  updateColumnPermission: (boardId, columnId, userId, permission) => {
+    return boardsDb.shareColumn(boardId, columnId, userId, permission);
+  },
+  updateCardPermission: (boardId, columnId, cardId, userId, permission) => {
+    return boardsDb.shareCard(boardId, columnId, cardId, userId, permission);
   },
 };
 

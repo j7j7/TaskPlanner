@@ -2,14 +2,20 @@ import { useEffect, useState } from 'react';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useAuth } from '../../hooks/useAuth';
 import { Modal } from '../ui/Modal';
-import type { User } from '../../types';
+import type { SharePermission } from '../../types';
+
+interface SelectedUser {
+  userId: string;
+  permission: SharePermission;
+}
 
 interface UserSelectorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectUser: (userId: string) => void;
+  onSelectUser: (userId: string, permission?: SharePermission) => void;
+  onUpdatePermission?: (userId: string, permission: SharePermission) => void;
   title: string;
-  selectedUserIds: string[];
+  selectedUsers: SelectedUser[];
   mode: 'share' | 'manage';
 }
 
@@ -17,58 +23,141 @@ export function UserSelector({
   isOpen,
   onClose,
   onSelectUser,
+  onUpdatePermission,
   title,
-  selectedUserIds,
+  selectedUsers: initialSelectedUsers,
   mode,
 }: UserSelectorProps) {
   const { users, fetchUsers } = useBoardStore();
   const { user } = useAuth();
   const [search, setSearch] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>(selectedUserIds);
+  const [selectedUsers, setSelectedUsers] = useState<SelectedUser[]>(initialSelectedUsers);
+  const [permissionSelectOpen, setPermissionSelectOpen] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      fetchUsers();
-      setSelectedUsers(selectedUserIds);
+      setIsLoading(true);
+      fetchUsers().finally(() => setIsLoading(false));
+      setSelectedUsers(initialSelectedUsers);
     }
-  }, [isOpen, fetchUsers, selectedUserIds]);
+  }, [isOpen]);
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch = u.username.toLowerCase().includes(search.toLowerCase());
     const notSelf = u.id !== user?.id;
-    return matchesSearch && notSelf;
+    const alreadyShared = selectedUsers.some((su) => su.userId === u.id);
+    return matchesSearch && notSelf && !alreadyShared;
   });
 
   const toggleUser = (userId: string) => {
-    if (mode === 'manage') {
-      setSelectedUsers((prev) =>
-        prev.includes(userId)
-          ? prev.filter((id) => id !== userId)
-          : [...prev, userId]
-      );
-    } else {
+    if (mode === 'share') {
       onSelectUser(userId);
       onClose();
+    } else {
+      const alreadySelected = selectedUsers.some((su) => su.userId === userId);
+      if (!alreadySelected) {
+        setSelectedUsers((prev) => [...prev, { userId, permission: 'read' }]);
+      }
     }
   };
 
   const handleConfirm = () => {
-    selectedUsers.forEach((userId) => {
-      if (!selectedUserIds.includes(userId)) {
-        onSelectUser(userId);
-      }
-    });
+    if (mode === 'manage') {
+      selectedUsers.forEach((su) => {
+        const original = initialSelectedUsers.find((isu) => isu.userId === su.userId);
+        if (!original) {
+          onSelectUser(su.userId, su.permission);
+        } else if (original.permission !== su.permission && onUpdatePermission) {
+          onUpdatePermission(su.userId, su.permission);
+        }
+      });
+    } else {
+      selectedUsers.forEach((su) => {
+        const alreadySelected = initialSelectedUsers.some((isu) => isu.userId === su.userId);
+        if (!alreadySelected) {
+          onSelectUser(su.userId, su.permission);
+        }
+      });
+    }
     onClose();
   };
 
   const handleRemove = (userId: string) => {
     if (mode === 'manage') {
-      setSelectedUsers((prev) => prev.filter((id) => id !== userId));
+      setSelectedUsers((prev) => prev.filter((su) => su.userId !== userId));
     }
   };
 
+  const handlePermissionChange = (userId: string, permission: SharePermission) => {
+    setSelectedUsers((prev) =>
+      prev.map((su) => (su.userId === userId ? { ...su, permission } : su))
+    );
+    setPermissionSelectOpen(null);
+  };
+
   const getSelectedUserObjects = () => {
-    return users.filter((u) => selectedUsers.includes(u.id));
+    return users
+      .filter((u) => selectedUsers.some((su) => su.userId === u.id))
+      .map((u) => ({
+        ...u,
+        permission: selectedUsers.find((su) => su.userId === u.id)?.permission || 'read',
+      }));
+  };
+
+  const renderUserList = () => {
+    if (isLoading) {
+      return (
+        <div className="text-sm text-textMuted text-center py-8">
+          Loading users...
+        </div>
+      );
+    }
+
+    if (filteredUsers.length === 0) {
+      return (
+        <p className="text-sm text-textMuted text-center py-4">
+          {users.length <= 1 ? 'No other users available' : 'No users found'}
+        </p>
+      );
+    }
+
+    return filteredUsers.map((u) => {
+      const isSelected = selectedUsers.some((su) => su.userId === u.id);
+      return (
+        <button
+          key={u.id}
+          onClick={() => toggleUser(u.id)}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+            isSelected
+              ? 'bg-accent/10 border border-accent/30'
+              : 'hover:bg-surfaceLight'
+          }`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              isSelected ? 'bg-accent' : 'bg-surfaceLight'
+            }`}
+          >
+            <span
+              className={`text-sm font-medium ${
+                isSelected ? 'text-background' : 'text-textMuted'
+              }`}
+            >
+              {u.username.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium text-text">{u.username}</p>
+          </div>
+          {isSelected && (
+            <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+      );
+    });
   };
 
   return (
@@ -98,6 +187,30 @@ export function UserSelector({
                     </span>
                   </div>
                   <span className="text-sm text-text">{u.username}</span>
+                  <div className="relative">
+                    <button
+                      onClick={() => setPermissionSelectOpen(permissionSelectOpen === u.id ? null : u.id)}
+                      className="text-xs px-1.5 py-0.5 bg-surfaceLight rounded hover:bg-surface ml-1"
+                    >
+                      {u.permission === 'write' ? '✏️' : '👁️'} {u.permission}
+                    </button>
+                    {permissionSelectOpen === u.id && (
+                      <div className="absolute top-full left-0 mt-1 bg-surface border border-border rounded-lg shadow-lg z-10">
+                        <button
+                          onClick={() => handlePermissionChange(u.id, 'read')}
+                          className="block w-full text-left px-3 py-1.5 text-sm hover:bg-surfaceLight"
+                        >
+                          👁️ Read
+                        </button>
+                        <button
+                          onClick={() => handlePermissionChange(u.id, 'write')}
+                          className="block w-full text-left px-3 py-1.5 text-sm hover:bg-surfaceLight"
+                        >
+                          ✏️ Write
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleRemove(u.id)}
                     className="text-textMuted hover:text-danger ml-1"
@@ -113,48 +226,7 @@ export function UserSelector({
         )}
 
         <div className="max-h-60 overflow-y-auto space-y-1">
-          {filteredUsers.length === 0 ? (
-            <p className="text-sm text-textMuted text-center py-4">
-              No users found
-            </p>
-          ) : (
-            filteredUsers.map((u) => {
-              const isSelected = selectedUsers.includes(u.id);
-              return (
-                <button
-                  key={u.id}
-                  onClick={() => toggleUser(u.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    isSelected
-                      ? 'bg-accent/10 border border-accent/30'
-                      : 'hover:bg-surfaceLight'
-                  }`}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      isSelected ? 'bg-accent' : 'bg-surfaceLight'
-                    }`}
-                  >
-                    <span
-                      className={`text-sm font-medium ${
-                        isSelected ? 'text-background' : 'text-textMuted'
-                      }`}
-                    >
-                      {u.username.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-text">{u.username}</p>
-                  </div>
-                  {isSelected && (
-                    <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })
-          )}
+          {renderUserList()}
         </div>
 
         {mode === 'manage' && (
@@ -162,7 +234,7 @@ export function UserSelector({
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleConfirm}>
+            <Button onClick={handleConfirm} disabled={isLoading}>
               Save Changes
             </Button>
           </div>

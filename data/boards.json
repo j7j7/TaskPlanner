@@ -230,21 +230,69 @@
             "priority": "medium",
             "order": 0,
             "createdAt": "2025-12-30T05:02:03.107Z",
-            "updatedAt": "2025-12-30T05:02:03.108Z",
+            "updatedAt": "2025-12-30T05:49:46.279Z",
             "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
             "sharedWith": [
-              "9bac0e1b-5ab6-4b26-b166-6edb1cfd15f7"
-            ]
+              {
+                "userId": "9bac0e1b-5ab6-4b26-b166-6edb1cfd15f7",
+                "permission": "write"
+              }
+            ],
+            "description": "des"
+          },
+          {
+            "id": "zwszrbmyb8fpvsl98e",
+            "columnId": "ljt3i5uibvprk5nas6",
+            "title": "task3",
+            "labels": [],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T05:23:58.978Z",
+            "updatedAt": "2025-12-30T05:23:58.978Z",
+            "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
+            "sharedWith": []
           }
         ],
         "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
-        "sharedWith": []
+        "sharedWith": [
+          {
+            "userId": "9bac0e1b-5ab6-4b26-b166-6edb1cfd15f7",
+            "permission": "write"
+          }
+        ]
       },
       {
         "id": "88k5gmmxzql675zic1",
         "title": "DONE",
         "color": "#22c55e",
         "order": 1,
+        "cards": [
+          {
+            "id": "6fsw14rc5ymhejvx5g",
+            "columnId": "88k5gmmxzql675zic1",
+            "title": "task2",
+            "labels": [],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T05:23:53.964Z",
+            "updatedAt": "2025-12-30T05:23:53.964Z",
+            "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
+            "sharedWith": []
+          }
+        ],
+        "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
+        "sharedWith": [
+          {
+            "userId": "9bac0e1b-5ab6-4b26-b166-6edb1cfd15f7",
+            "permission": "read"
+          }
+        ]
+      },
+      {
+        "id": "hf3nw7o4e2nn1iic8d",
+        "title": "Complete",
+        "color": "#3b82f6",
+        "order": 2,
         "cards": [],
         "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
         "sharedWith": []
@@ -254,6 +302,41 @@
       "9bac0e1b-5ab6-4b26-b166-6edb1cfd15f7"
     ],
     "createdAt": "2025-12-30T05:00:58.352Z",
-    "updatedAt": "2025-12-30T05:03:07.299Z"
+    "updatedAt": "2025-12-30T05:51:31.884Z"
+  },
+  {
+    "id": "b8ult1c5g0oxckjw3u",
+    "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
+    "title": "MyBoard",
+    "columns": [
+      {
+        "id": "yu129r6vhicbvskr1b",
+        "title": "thinking",
+        "color": "#f59e0b",
+        "order": 0,
+        "cards": [
+          {
+            "id": "mtcp5vmyuf4ciqx9bh",
+            "columnId": "yu129r6vhicbvskr1b",
+            "title": "card",
+            "labels": [
+              "idea",
+              "feature"
+            ],
+            "priority": "medium",
+            "order": 0,
+            "createdAt": "2025-12-30T05:52:39.316Z",
+            "updatedAt": "2025-12-30T05:52:47.272Z",
+            "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
+            "sharedWith": []
+          }
+        ],
+        "userId": "a074aae6-b9e3-4a77-95cf-318946d35c98",
+        "sharedWith": []
+      }
+    ],
+    "sharedWith": [],
+    "createdAt": "2025-12-30T05:52:20.461Z",
+    "updatedAt": "2025-12-30T05:52:47.279Z"
   }
 ]

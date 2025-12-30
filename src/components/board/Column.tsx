@@ -94,7 +94,7 @@ export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
     }
   };
 
-  const handleShare = async (userId: string, permission?: 'read' | 'write') => {
+  const handleShare = async (userId: string, permission: 'read' | 'write' = 'write') => {
     if (currentBoard) {
       await shareColumn(currentBoard.id, column.id, userId, permission);
     }
@@ -253,6 +253,7 @@ export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
 
         <div
           className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0 scrollbar-thin"
+          onDoubleClick={() => canWrite && setIsAddingCard(true)}
         >
           <SortableContext
             items={column.cards.map((card) => card.id)}
@@ -260,7 +261,6 @@ export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
           >
             {column.cards.map((card, index) => {
               const isOver = dragOverId === card.id && activeCardId !== card.id;
-              const isActive = activeCardId === card.id;
               
               // Find the active card's position
               const activeCardIndex = activeCardId 

@@ -52,14 +52,12 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   const [editLabelColor, setEditLabelColor] = useState('');
 
   useEffect(() => {
-    setTimeout(() => {
-      setTitle(card.title);
-      setDescription(card.description || '');
-      setPriority(card.priority);
-      setDueDate(card.dueDate || '');
-      setSelectedLabels(card.labels);
-      setIcon(card.icon || '');
-    }, 0);
+    setTitle(card.title);
+    setDescription(card.description || '');
+    setPriority(card.priority);
+    setDueDate(card.dueDate || '');
+    setSelectedLabels(card.labels);
+    setIcon(card.icon || '');
   }, [card]);
 
   const handleSave = async () => {

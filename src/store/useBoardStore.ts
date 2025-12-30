@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import type { Board, Column, Card, Label } from '../types';
 import { api } from '../utils/api';
 
+function generateShortId() {
+  return Math.random().toString(36).substring(2, 11) + Math.random().toString(36).substring(2, 11);
+}
+
 interface BoardState {
   boards: Board[];
   currentBoard: Board | null;
@@ -108,7 +112,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     const columns = board.columns ?? [];
     const newColumn: Column = {
-      id: `col-${Date.now()}`,
+      id: generateShortId(),
       title,
       color,
       order: columns.length,
@@ -175,7 +179,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     const columns = board.columns ?? [];
     const newCard: Card = {
-      id: `card-${Date.now()}`,
+      id: generateShortId(),
       columnId,
       title,
       labels: [],

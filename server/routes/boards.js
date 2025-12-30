@@ -1,9 +1,12 @@
 import express from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { boardsDb, labelsDb } from '../store.js';
 import { getSession } from '../auth.js';
 
 const router = express.Router();
+
+function generateShortId() {
+  return Math.random().toString(36).substring(2, 11) + Math.random().toString(36).substring(2, 11);
+}
 
 function requireAuth(req, res, next) {
   const token = req.cookies?.kanban_session;
@@ -41,7 +44,7 @@ router.post('/', requireAuth, (req, res) => {
     }
 
     const board = {
-      id: uuidv4(),
+      id: generateShortId(),
       userId: req.userId,
       title: title.trim(),
       columns: [],

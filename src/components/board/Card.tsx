@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Card as CardType, Label, SharedUser } from '../../types';
 import { CardModal } from './CardModal';
 import { useBoardStore } from '../../store/useBoardStore';
@@ -22,13 +23,26 @@ function getUserColor(userId: string): string {
 }
 
 export function Card({ card, labels, isDragOver = false }: CardProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: card.id,
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { users, fetchUsers, currentBoard, shareCard, unshareCard } = useBoardStore();
   const { user } = useAuth();
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   useEffect(() => {
     if (isShareModalOpen) {
@@ -97,6 +111,7 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
     <>
       <div
         ref={setNodeRef}
+        style={style}
         {...attributes}
         {...listeners}
         className={`task-card group ${isDragging ? 'dragging' : ''} ${isDragOver ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface' : ''} ${!canWrite ? 'cursor-pointer' : ''}`}

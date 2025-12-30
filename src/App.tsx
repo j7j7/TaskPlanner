@@ -6,7 +6,45 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { HomePage } from './pages/HomePage';
 import { BoardPage } from './pages/BoardPage';
-import { useBoardStore } from './store/useBoardStore';
+import { useBoardStore, useUsers } from './store/useBoardStore';
+import db from './lib/db';
+
+// Component to sync users from InstantDB to the store
+function UsersSync() {
+  const { user } = useAuth();
+  const { users, isLoading, error } = useUsers();
+  const setUsers = useBoardStore((state) => state.setUsers);
+
+  // Ensure current user's profile exists in the users entity
+  useEffect(() => {
+    if (user) {
+      const userExists = users.some((u) => u.id === user.id);
+      if (!userExists) {
+        // Create profile for current user if it doesn't exist
+        const now = Date.now();
+        db.transact([
+          db.tx.users[user.id].update({
+            email: user.username.includes('@') ? user.username : `${user.username}@example.com`,
+            username: user.username.includes('@') ? user.username.split('@')[0] : user.username,
+            createdAt: now,
+            updatedAt: now,
+          }),
+        ]).catch((err) => {
+          console.error('Failed to create user profile:', err);
+        });
+      }
+    }
+  }, [user, users]);
+
+  useEffect(() => {
+    console.log('UsersSync - users:', users.length, users);
+    console.log('UsersSync - isLoading:', isLoading, 'error:', error);
+    // Always set users, even if empty (to clear store)
+    setUsers(users);
+  }, [users, setUsers, isLoading, error]);
+
+  return null;
+}
 
 function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -34,35 +72,38 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage />} />
-      <Route
-        path="/"
-        element={
-          user ? (
-            <Layout>
-              <HomePage />
-            </Layout>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route
-        path="/board/:id"
-        element={
-          user ? (
-            <Layout>
-              <BoardPage />
-            </Layout>
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      {user && <UsersSync />}
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            user ? (
+              <Layout>
+                <HomePage />
+              </Layout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/board/:id"
+          element={
+            user ? (
+              <Layout>
+                <BoardPage />
+              </Layout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

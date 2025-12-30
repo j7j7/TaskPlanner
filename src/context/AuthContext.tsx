@@ -2,6 +2,10 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import db from '../lib/db';
 import type { User } from '../types';
 
+function now() {
+  return Date.now();
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -82,6 +86,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         console.log('Setting user:', newUser.id);
         setUser(newUser);
+        
+        // Create or update user profile in the users entity
+        try {
+          const timestamp = now();
+          await db.transact([
+            db.tx.users[authUser.id].update({
+              email: email,
+              username: email.split('@')[0], // Use email prefix as username
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            }),
+          ]);
+          console.log('User profile created/updated in users entity');
+        } catch (profileError) {
+          console.error('Failed to create/update user profile:', profileError);
+          // Don't fail the login if profile creation fails
+        }
       }
     } catch (err: unknown) {
       console.error('verifyMagicCode error:', err);

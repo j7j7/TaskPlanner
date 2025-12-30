@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { DndContext, type DragEndEvent, type DragOverEvent, DragOverlay, type DragStartEvent, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { DndContext, type DragEndEvent, type DragOverEvent, DragOverlay, type DragStartEvent, rectIntersection, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { Column } from './Column';
 import type { Card as CardType } from '../../types';
 import { useBoardStore } from '../../store/useBoardStore';
@@ -109,17 +109,34 @@ export function Board() {
         const overCardIndex = toColumnSame.cards.findIndex((c) => c.id === overId);
         if (overCardIndex === -1) return;
 
+        const fromIndex = fromColumn.cards.findIndex((c) => c.id === activeId);
+        if (fromIndex === -1) return;
+
         // Calculate the new index
-        // If moving within the same column, adjust index based on direction
-        let newIndex = overCardIndex;
+        let newIndex: number;
+        
         if (toColumnSame.id === fromColumn.id) {
-          const fromIndex = fromColumn.cards.findIndex((c) => c.id === activeId);
-          // If moving down, insert after the target; if moving up, insert at target position
+          // Moving within the same column
+          // The moveCard function will adjust the index based on removal position
+          // If moving down (fromIndex < overCardIndex), we want to insert after overCardIndex
+          // If moving up (fromIndex > overCardIndex), we want to insert at overCardIndex
           if (fromIndex < overCardIndex) {
+            // Moving down: insert after the target card
+            // moveCard will adjust: adjustedIndex = fromIndex < (overCardIndex + 1) ? (overCardIndex + 1) - 1 : (overCardIndex + 1)
+            // = fromIndex < (overCardIndex + 1) ? overCardIndex : (overCardIndex + 1)
+            // Since fromIndex < overCardIndex < overCardIndex + 1, adjustedIndex = overCardIndex
+            // This inserts at overCardIndex, which pushes the target card down (inserts after it)
             newIndex = overCardIndex + 1;
           } else {
+            // Moving up: insert at the target card's position (before it)
+            // moveCard will adjust: adjustedIndex = fromIndex > overCardIndex ? overCardIndex : overCardIndex
+            // = overCardIndex (since fromIndex > overCardIndex)
+            // This inserts at overCardIndex, pushing the target card down
             newIndex = overCardIndex;
           }
+        } else {
+          // Moving to a different column - insert at the target card's position
+          newIndex = overCardIndex;
         }
 
         moveCard(activeId, fromColumn.id, toColumnSame.id, newIndex);
@@ -130,7 +147,7 @@ export function Board() {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={rectIntersection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}

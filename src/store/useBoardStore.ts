@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { id } from '@instantdb/react';
 import db from '../lib/db';
-import type { Board, Label, User } from '../types';
+import type { Board, Label, User, Column, Card } from '../types';
 
 interface BoardState {
   boards: Board[];
@@ -51,6 +51,8 @@ interface BoardState {
   setCurrentBoard: (board: Board | null) => void;
   clearCurrentBoard: () => void;
   setError: (error: string | null) => void;
+  fetchUsers: () => Promise<void>;
+  setUsers: (users: User[]) => void;
 }
 
 function now() {
@@ -115,7 +117,6 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         createdAt: now(),
         updatedAt: now(),
         sharedWith: [],
-        columns: [],
       };
       console.log('Creating board with data:', boardData);
 
@@ -124,7 +125,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       ]);
 
       console.log('Board created successfully');
-      return convertBoardTimestamps(boardData as unknown as Board);
+      return convertBoardTimestamps({ ...boardData, columns: [] } as unknown as Board);
     } catch (error) {
       console.error('Failed to create board:', error);
       set({ error: 'Failed to create board' });
@@ -147,7 +148,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   deleteBoard: async (boardId: string) => {
     try {
-      await db.transact([db.tx.boards[boardId].delete()]);
+      // Get all columns and cards for this board to delete them
+      const { currentBoard } = get();
+      const columnsToDelete = currentBoard?.columns?.map(c => c.id) || [];
+      const cardsToDelete = currentBoard?.columns?.flatMap(c => c.cards?.map(card => card.id) || []) || [];
+      
+      // Delete cards, then columns, then board
+      const transactions = [
+        ...cardsToDelete.map(cardId => db.tx.cards[cardId].delete()),
+        ...columnsToDelete.map(columnId => db.tx.columns[columnId].delete()),
+        db.tx.boards[boardId].delete(),
+      ];
+      
+      await db.transact(transactions);
       set((state) => ({
         boards: state.boards.filter((b) => b.id !== boardId),
         currentBoard: state.currentBoard?.id === boardId ? null : state.currentBoard,
@@ -166,24 +179,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     try {
       const columnId = id();
+      // Get max order from existing columns
       const existingColumns = currentBoard.columns || [];
-      const newColumn = {
-        id: columnId,
-        title,
-        color,
-        order: existingColumns.length,
-        cards: [],
-        userId: currentUser.id,
-        sharedWith: [],
-        createdAt: now(),
-        updatedAt: now(),
-      };
-
-      const updatedColumns = [...existingColumns, newColumn];
+      const maxOrder = existingColumns.length > 0 
+        ? Math.max(...existingColumns.map(c => c.order)) + 1 
+        : 0;
 
       await db.transact([
+        db.tx.columns[columnId].update({
+          id: columnId,
+          boardId: currentBoard.id,
+          title,
+          color,
+          order: maxOrder,
+          userId: currentUser.id,
+          sharedWith: [],
+          createdAt: now(),
+          updatedAt: now(),
+        }),
         db.tx.boards[currentBoard.id].update({
-          columns: updatedColumns,
           updatedAt: now(),
         }),
       ]);
@@ -201,13 +215,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
 
     try {
-      const existingColumns = currentBoard.columns || [];
-      const columns = existingColumns.map((col) =>
-        col.id === columnId ? { ...col, ...updates, updatedAt: now() } : col
-      );
-
       await db.transact([
-        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+        db.tx.columns[columnId].update({
+          ...updates,
+          updatedAt: now(),
+        }),
+        db.tx.boards[currentBoard.id].update({
+          updatedAt: now(),
+        }),
       ]);
     } catch (error) {
       console.error('updateColumn: Error updating column', error);
@@ -223,12 +238,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
 
     try {
-      const existingColumns = currentBoard.columns || [];
-      const columns = existingColumns.filter((col) => col.id !== columnId);
+      // Get all cards in this column to delete them
+      const column = currentBoard.columns?.find(c => c.id === columnId);
+      const cardIds = column?.cards?.map(c => c.id) || [];
 
-      await db.transact([
-        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
-      ]);
+      // Delete all cards in the column, then delete the column
+      const transactions = [
+        ...cardIds.map(cardId => db.tx.cards[cardId].delete()),
+        db.tx.columns[columnId].delete(),
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
+      ];
+
+      await db.transact(transactions);
     } catch (error) {
       console.error('deleteColumn: Error deleting column', error);
       set({ error: `Failed to delete column: ${error instanceof Error ? error.message : 'Unknown error'}` });
@@ -243,8 +264,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
 
     try {
-      const existingColumns = currentBoard.columns || [];
-      const column = existingColumns.find((c) => c.id === columnId);
+      const column = currentBoard.columns?.find((c) => c.id === columnId);
       if (!column) {
         console.error('createCard: Column not found', columnId);
         return;
@@ -252,27 +272,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
       const cardId = id();
       const existingCards = column.cards || [];
-      const newCard = {
-        id: cardId,
-        columnId,
-        title,
-        labels: [],
-        priority: 'medium' as const,
-        order: existingCards.length,
-        userId: currentUser.id,
-        sharedWith: [],
-        createdAt: now(),
-        updatedAt: now(),
-      };
-
-      const columns = existingColumns.map((col) =>
-        col.id === columnId
-          ? { ...col, cards: [...existingCards, newCard], updatedAt: now() }
-          : col
-      );
+      const maxOrder = existingCards.length > 0 
+        ? Math.max(...existingCards.map(c => c.order)) + 1 
+        : 0;
 
       await db.transact([
-        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+        db.tx.cards[cardId].update({
+          id: cardId,
+          columnId,
+          boardId: currentBoard.id,
+          title,
+          labels: [],
+          priority: 'medium',
+          order: maxOrder,
+          userId: currentUser.id,
+          sharedWith: [],
+          createdAt: now(),
+          updatedAt: now(),
+        }),
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
       ]);
     } catch (error) {
       console.error('createCard: Error creating card', error);
@@ -285,15 +303,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!currentBoard) return;
 
     try {
-      const columns = currentBoard.columns.map((col) => ({
-        ...col,
-        cards: col.cards.map((card) =>
-          card.id === cardId ? { ...card, ...updates, updatedAt: now() } : card
-        ),
-      }));
-
+      // Remove fields that shouldn't be updated directly (they're managed by the system)
+      const { id: _, columnId, boardId, createdAt, ...updateFields } = updates as any;
+      
       await db.transact([
-        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+        db.tx.cards[cardId].update({
+          ...updateFields,
+          updatedAt: now(),
+        }),
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
       ]);
     } catch (error) {
       set({ error: 'Failed to update card' });
@@ -305,13 +323,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!currentBoard) return;
 
     try {
-      const columns = currentBoard.columns.map((col) => ({
-        ...col,
-        cards: col.cards.filter((card) => card.id !== cardId),
-      }));
-
       await db.transact([
-        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
+        db.tx.cards[cardId].delete(),
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
       ]);
     } catch (error) {
       set({ error: 'Failed to delete card' });
@@ -333,63 +347,70 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         return;
       }
 
-      // Work with copies to avoid mutation issues
-      const fromCards = [...fromColumn.cards];
+      const fromCards = [...(fromColumn.cards || [])];
       const cardIndex = fromCards.findIndex((c) => c.id === cardId);
       if (cardIndex === -1) {
         console.error('moveCard: Card not found in source column', cardId);
         return;
       }
 
-      const movedCard = { ...fromCards[cardIndex] };
-      movedCard.columnId = toColumnId;
-
-      let destCards: typeof fromCards;
+      const transactions: any[] = [];
       
       if (fromColumnId === toColumnId) {
-        // Moving within the same column
-        destCards = [...fromCards];
-        // Remove the card from its current position
-        destCards.splice(cardIndex, 1);
-        // Adjust the target index if we removed a card before the target position
+        // Moving within the same column - reorder cards
+        const cards = [...fromCards];
+        cards.splice(cardIndex, 1);
         const adjustedIndex = cardIndex < newIndex ? newIndex - 1 : newIndex;
-        // Insert at the new position
-        destCards.splice(adjustedIndex, 0, movedCard);
+        cards.splice(adjustedIndex, 0, fromCards[cardIndex]);
+        
+        // Update order for all cards in the column
+        cards.forEach((card, index) => {
+          transactions.push(
+            db.tx.cards[card.id].update({ order: index, updatedAt: now() })
+          );
+        });
       } else {
         // Moving to a different column
-        destCards = [...toColumn.cards];
-        destCards.splice(newIndex, 0, movedCard);
+        const toCards = [...(toColumn.cards || [])];
+        toCards.splice(newIndex, 0, fromCards[cardIndex]);
+        
+        // Both columns are in the same board (currentBoard), so boardId stays the same
+        // But we ensure it's set correctly for data consistency
+        const toColumnBoardId = currentBoard.id;
+        
+        // Update the moved card's columnId, boardId, and order
+        transactions.push(
+          db.tx.cards[cardId].update({ 
+            columnId: toColumnId,
+            boardId: toColumnBoardId, // Ensure boardId matches the board
+            order: newIndex, 
+            updatedAt: now() 
+          })
+        );
+        
+        // Update orders for remaining cards in source column
+        const remainingFromCards = fromCards.filter((c) => c.id !== cardId);
+        remainingFromCards.forEach((card, index) => {
+          transactions.push(
+            db.tx.cards[card.id].update({ order: index, updatedAt: now() })
+          );
+        });
+        
+        // Update orders for cards in destination column (excluding the moved card)
+        toCards.forEach((card, index) => {
+          if (card.id !== cardId) {
+            transactions.push(
+              db.tx.cards[card.id].update({ order: index, updatedAt: now() })
+            );
+          }
+        });
       }
 
-      // Update order property for all cards
-      const destCardsWithOrder = destCards.map((card, index) => ({
-        ...card,
-        order: index,
-        updatedAt: now(),
-      }));
+      transactions.push(
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() })
+      );
 
-      const columns = currentBoard.columns.map((col) => {
-        if (col.id === fromColumnId && fromColumnId !== toColumnId) {
-          // Update source column (removed card)
-          const updatedFromCards = fromCards
-            .filter((c) => c.id !== cardId)
-            .map((card, index) => ({
-              ...card,
-              order: index,
-              updatedAt: now(),
-            }));
-          return { ...col, cards: updatedFromCards, updatedAt: now() };
-        }
-        if (col.id === toColumnId) {
-          // Update destination column (added card)
-          return { ...col, cards: destCardsWithOrder, updatedAt: now() };
-        }
-        return col;
-      });
-
-      await db.transact([
-        db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
-      ]);
+      await db.transact(transactions);
     } catch (error) {
       console.error('moveCard: Error moving card', error);
       set({ error: `Failed to move card: ${error instanceof Error ? error.message : 'Unknown error'}` });
@@ -412,19 +433,16 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const [movedColumn] = columns.splice(oldIndex, 1);
       columns.splice(newIndex, 0, movedColumn);
 
-      // Update order property for all columns to match their new positions
-      const columnsWithUpdatedOrder = columns.map((col, index) => ({
-        ...col,
-        order: index,
-        updatedAt: now(),
-      }));
+      // Update order for all columns
+      const transactions = columns.map((col, index) =>
+        db.tx.columns[col.id].update({ order: index, updatedAt: now() })
+      );
 
-      await db.transact([
-        db.tx.boards[currentBoard.id].update({ 
-          columns: columnsWithUpdatedOrder, 
-          updatedAt: now() 
-        }),
-      ]);
+      transactions.push(
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() })
+      );
+
+      await db.transact(transactions);
     } catch (error) {
       console.error('moveColumn: Error moving column', error);
       set({ error: `Failed to move column: ${error instanceof Error ? error.message : 'Unknown error'}` });
@@ -517,24 +535,24 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!currentBoard) return;
 
     try {
-      const columns = currentBoard.columns.map((col) => {
-        if (col.id === columnId) {
-          const sharedWith = [...(col.sharedWith || [])];
-          const existingIndex = sharedWith.findIndex((s) => s.userId === userId);
+      const column = currentBoard.columns?.find((col) => col.id === columnId);
+      if (!column) {
+        console.error('shareColumn: Column not found', columnId);
+        return;
+      }
 
-          if (existingIndex !== -1) {
-            sharedWith[existingIndex].permission = permission;
-          } else {
-            sharedWith.push({ userId, permission });
-          }
+      const sharedWith = [...(column.sharedWith || [])];
+      const existingIndex = sharedWith.findIndex((s) => s.userId === userId);
 
-          return { ...col, sharedWith, updatedAt: now() };
-        }
-        return col;
-      });
+      if (existingIndex !== -1) {
+        sharedWith[existingIndex].permission = permission;
+      } else {
+        sharedWith.push({ userId, permission });
+      }
 
       await db.transact([
-        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+        db.tx.columns[columnId].update({ sharedWith, updatedAt: now() }),
+        db.tx.boards[boardId].update({ updatedAt: now() }),
       ]);
     } catch (error) {
       set({ error: 'Failed to share column' });
@@ -546,16 +564,17 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!currentBoard) return;
 
     try {
-      const columns = currentBoard.columns.map((col) => {
-        if (col.id === columnId) {
-          const sharedWith = (col.sharedWith || []).filter((s) => s.userId !== userId);
-          return { ...col, sharedWith, updatedAt: now() };
-        }
-        return col;
-      });
+      const column = currentBoard.columns?.find((col) => col.id === columnId);
+      if (!column) {
+        console.error('unshareColumn: Column not found', columnId);
+        return;
+      }
+
+      const sharedWith = (column.sharedWith || []).filter((s) => s.userId !== userId);
 
       await db.transact([
-        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+        db.tx.columns[columnId].update({ sharedWith, updatedAt: now() }),
+        db.tx.boards[boardId].update({ updatedAt: now() }),
       ]);
     } catch (error) {
       set({ error: 'Failed to unshare column' });
@@ -571,30 +590,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!currentBoard) return;
 
     try {
-      const columns = currentBoard.columns.map((col) => {
-        if (col.id === columnId) {
-          const cards = col.cards.map((card) => {
-            if (card.id === cardId) {
-              const sharedWith = [...(card.sharedWith || [])];
-              const existingIndex = sharedWith.findIndex((s) => s.userId === userId);
+      const column = currentBoard.columns?.find((col) => col.id === columnId);
+      const card = column?.cards?.find((c) => c.id === cardId);
+      if (!card) {
+        console.error('shareCard: Card not found', cardId);
+        return;
+      }
 
-              if (existingIndex !== -1) {
-                sharedWith[existingIndex].permission = permission;
-              } else {
-                sharedWith.push({ userId, permission });
-              }
+      const sharedWith = [...(card.sharedWith || [])];
+      const existingIndex = sharedWith.findIndex((s) => s.userId === userId);
 
-              return { ...card, sharedWith, updatedAt: now() };
-            }
-            return card;
-          });
-          return { ...col, cards, updatedAt: now() };
-        }
-        return col;
-      });
+      if (existingIndex !== -1) {
+        sharedWith[existingIndex].permission = permission;
+      } else {
+        sharedWith.push({ userId, permission });
+      }
 
       await db.transact([
-        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+        db.tx.cards[cardId].update({ sharedWith, updatedAt: now() }),
+        db.tx.boards[boardId].update({ updatedAt: now() }),
       ]);
     } catch (error) {
       set({ error: 'Failed to share card' });
@@ -606,22 +620,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!currentBoard) return;
 
     try {
-      const columns = currentBoard.columns.map((col) => {
-        if (col.id === columnId) {
-          const cards = col.cards.map((card) => {
-            if (card.id === cardId) {
-              const sharedWith = (card.sharedWith || []).filter((s) => s.userId !== userId);
-              return { ...card, sharedWith, updatedAt: now() };
-            }
-            return card;
-          });
-          return { ...col, cards, updatedAt: now() };
-        }
-        return col;
-      });
+      const column = currentBoard.columns?.find((col) => col.id === columnId);
+      const card = column?.cards?.find((c) => c.id === cardId);
+      if (!card) {
+        console.error('unshareCard: Card not found', cardId);
+        return;
+      }
+
+      const sharedWith = (card.sharedWith || []).filter((s) => s.userId !== userId);
 
       await db.transact([
-        db.tx.boards[boardId].update({ columns, updatedAt: now() }),
+        db.tx.cards[cardId].update({ sharedWith, updatedAt: now() }),
+        db.tx.boards[boardId].update({ updatedAt: now() }),
       ]);
     } catch (error) {
       set({ error: 'Failed to unshare card' });
@@ -643,40 +653,198 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   setError: (error: string | null) => {
     set({ error });
   },
+
+  fetchUsers: async () => {
+    // InstantDB queries are reactive, so users are automatically synced
+    // This function exists for API compatibility with components
+    // The actual syncing happens via UsersSync component
+    return Promise.resolve();
+  },
+  
+  setUsers: (users: User[]) => {
+    set({ users });
+  },
 }));
+
+// Helper functions for user access checking
+function hasBoardAccess(board: Board, userId: string | null): boolean {
+  if (!userId) return false;
+  // User owns the board
+  if (board.userId === userId) return true;
+  // User is in sharedWith array
+  const sharedWith = board.sharedWith || [];
+  return sharedWith.some((s) => s.userId === userId);
+}
+
+function hasColumnAccess(column: Column, userId: string | null, boardOwnerId: string): boolean {
+  if (!userId) return false;
+  // User owns the column
+  if (column.userId === userId) return true;
+  // User owns the board (has access to all columns)
+  if (boardOwnerId === userId) return true;
+  // User is in column's sharedWith array
+  const sharedWith = column.sharedWith || [];
+  return sharedWith.some((s) => s.userId === userId);
+}
+
+function hasCardAccess(card: Card, userId: string | null, boardOwnerId: string, columnOwnerId: string): boolean {
+  if (!userId) return false;
+  // User owns the card
+  if (card.userId === userId) return true;
+  // User owns the board or column (has access to all cards)
+  if (boardOwnerId === userId || columnOwnerId === userId) return true;
+  // User is in card's sharedWith array
+  const sharedWith = card.sharedWith || [];
+  return sharedWith.some((s) => s.userId === userId);
+}
+
+function filterBoardForUser(board: Board, userId: string | null): Board | null {
+  if (!hasBoardAccess(board, userId)) return null;
+  
+  const userOwnsBoard = board.userId === userId;
+  
+  // Filter columns and cards within the board
+  const filteredColumns = (board.columns || [])
+    .filter((col) => {
+      // If user owns the board, they see all columns
+      if (userOwnsBoard) return true;
+      // Otherwise, check if user has access to this column
+      return hasColumnAccess(col, userId, board.userId);
+    })
+    .map((col) => {
+      const userOwnsColumn = col.userId === userId;
+      return {
+        ...col,
+        cards: (col.cards || []).filter((card) => {
+          // If user owns the board or column, they see all cards
+          if (userOwnsBoard || userOwnsColumn) return true;
+          // Otherwise, check if user has access to this card
+          return hasCardAccess(card, userId, board.userId, col.userId);
+        }),
+      };
+    });
+  
+  return {
+    ...board,
+    columns: filteredColumns,
+  };
+}
 
 // Helper hooks for querying data
 export function useBoards() {
-  const queryResult = db.useQuery({ boards: {} }) || {};
+  const currentUser = useBoardStore((state) => state.currentUser);
+  
+  // Query boards, columns, and cards separately
+  const boardsQuery = db.useQuery({ boards: {} }) || {};
+  const columnsQuery = db.useQuery({ columns: {} }) || {};
+  const cardsQuery = db.useQuery({ cards: {} }) || {};
   
   // Check different possible structures
-  const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
-  const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
-  const error = (queryResult as { error?: Error })?.error;
+  const boardsResult = (boardsQuery as { data?: unknown })?.data || (boardsQuery as { result?: unknown })?.result;
+  const columnsResult = (columnsQuery as { data?: unknown })?.data || (columnsQuery as { result?: unknown })?.result;
+  const cardsResult = (cardsQuery as { data?: unknown })?.data || (cardsQuery as { result?: unknown })?.result;
+  
+  const isLoading = ((boardsQuery as { isLoading?: boolean })?.isLoading ?? true) ||
+                    ((columnsQuery as { isLoading?: boolean })?.isLoading ?? true) ||
+                    ((cardsQuery as { isLoading?: boolean })?.isLoading ?? true);
+  const error = (boardsQuery as { error?: Error })?.error || 
+                (columnsQuery as { error?: Error })?.error ||
+                (cardsQuery as { error?: Error })?.error;
 
-  const rawBoards = (result as { boards?: unknown[] })?.boards || [];
-  const boards = rawBoards.map((b: unknown) => convertBoardTimestamps(b as Board));
+  const rawBoards = (boardsResult as { boards?: unknown[] })?.boards || [];
+  const rawColumns = (columnsResult as { columns?: unknown[] })?.columns || [];
+  const rawCards = (cardsResult as { cards?: unknown[] })?.cards || [];
+  
+  // Convert timestamps
+  const allBoards = rawBoards.map((b: unknown) => convertTimestamp(b as Board));
+  const allColumns = rawColumns.map((c: unknown) => convertTimestamp(c as Column));
+  const allCards = rawCards.map((c: unknown) => convertTimestamp(c as Card));
+  
+  // Join columns and cards into boards
+  const boardsWithData = allBoards.map((board) => {
+    const boardColumns = allColumns
+      .filter((col) => col.boardId === board.id)
+      .sort((a, b) => a.order - b.order)
+      .map((col) => ({
+        ...col,
+        cards: allCards
+          .filter((card) => card.columnId === col.id)
+          .sort((a, b) => a.order - b.order)
+          .map((card) => convertTimestamp(card)),
+      }));
+    
+    return {
+      ...board,
+      columns: boardColumns,
+    } as Board;
+  });
+  
+  // Filter boards by current user (owned or shared)
+  const boards = boardsWithData
+    .map((board) => filterBoardForUser(board, currentUser?.id || null))
+    .filter((board): board is Board => board !== null);
 
   return { boards, isLoading, error };
 }
 
 export function useBoard(boardId: string) {
-  const queryResult = db.useQuery({ boards: {} }) || {};
+  const currentUser = useBoardStore((state) => state.currentUser);
   
-  // Check different possible structures (matching useBoards logic)
-  const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
-  const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
-  const error = (queryResult as { error?: Error })?.error;
+  // Query boards, columns, and cards separately
+  const boardsQuery = db.useQuery({ boards: {} }) || {};
+  const columnsQuery = db.useQuery({ columns: {} }) || {};
+  const cardsQuery = db.useQuery({ cards: {} }) || {};
+  
+  // Check different possible structures
+  const boardsResult = (boardsQuery as { data?: unknown })?.data || (boardsQuery as { result?: unknown })?.result;
+  const columnsResult = (columnsQuery as { data?: unknown })?.data || (columnsQuery as { result?: unknown })?.result;
+  const cardsResult = (cardsQuery as { data?: unknown })?.data || (cardsQuery as { result?: unknown })?.result;
+  
+  const isLoading = ((boardsQuery as { isLoading?: boolean })?.isLoading ?? true) ||
+                    ((columnsQuery as { isLoading?: boolean })?.isLoading ?? true) ||
+                    ((cardsQuery as { isLoading?: boolean })?.isLoading ?? true);
+  const error = (boardsQuery as { error?: Error })?.error || 
+                (columnsQuery as { error?: Error })?.error ||
+                (cardsQuery as { error?: Error })?.error;
 
-  const allBoards = (result as { boards?: Board[] })?.boards || [];
-  const board = allBoards
+  const allBoards = (boardsResult as { boards?: Board[] })?.boards || [];
+  const allColumns = (columnsResult as { columns?: Column[] })?.columns || [];
+  const allCards = (cardsResult as { cards?: Card[] })?.cards || [];
+  
+  // Find the board
+  const rawBoard = allBoards
     .filter((b): b is Board => b.id === boardId)
-    .map(convertBoardTimestamps)[0] || null;
+    .map(convertTimestamp)[0] || null;
+  
+  if (!rawBoard) {
+    return { board: null, isLoading, error };
+  }
+  
+  // Join columns and cards into the board
+  const boardColumns = allColumns
+    .filter((col) => col.boardId === boardId)
+    .sort((a, b) => a.order - b.order)
+    .map((col) => ({
+      ...convertTimestamp(col),
+      cards: allCards
+        .filter((card) => card.columnId === col.id)
+        .sort((a, b) => a.order - b.order)
+        .map((card) => convertTimestamp(card)),
+    }));
+  
+  const boardWithData = {
+    ...rawBoard,
+    columns: boardColumns,
+  } as Board;
+  
+  // Filter board by current user and filter nested columns/cards
+  const board = filterBoardForUser(boardWithData, currentUser?.id || null);
 
   return { board, isLoading, error };
 }
 
 export function useLabels() {
+  const currentUser = useBoardStore((state) => state.currentUser);
   const queryResult = db.useQuery({ labels: {} }) || {};
   
   // Check different possible structures (matching useBoards logic)
@@ -685,26 +853,35 @@ export function useLabels() {
   const error = (queryResult as { error?: Error })?.error;
 
   const rawLabels = (result as { labels?: Label[] })?.labels || [];
-  const labels = rawLabels.map((l) => ({
+  const allLabels = rawLabels.map((l) => ({
     ...l,
     createdAt: toISOTimestamp(l.createdAt),
   }));
+  
+  // Filter labels by current user (only show labels owned by current user)
+  const labels = currentUser
+    ? allLabels.filter((l) => l.userId === currentUser.id)
+    : [];
     
   return { labels, isLoading, error };
 }
 
 export function useUsers() {
-  const queryResult = db.useQuery({ $users: {} }) || {};
-  const result = (queryResult as { result?: unknown })?.result;
+  // Query the regular 'users' entity, not '$users' (which only shows current user)
+  const queryResult = db.useQuery({ users: {} }) || {};
+  
+  // Check different possible structures (matching useBoards logic)
+  const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
   const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
   const error = (queryResult as { error?: Error })?.error;
 
-  const users = (result as { $users?: User[] })?.$users
-    ? ((result as { $users: User[] }).$users as User[]).map((u) => ({
-        ...u,
-        createdAt: toISOTimestamp(u.createdAt),
-      }))
-    : [];
+  const rawUsers = (result as { users?: User[] })?.users || [];
+  const users = rawUsers.map((u) => ({
+    id: u.id,
+    username: u.username || u.email || u.id,
+    email: (u as any).email || u.username || u.id,
+    createdAt: toISOTimestamp(u.createdAt),
+  }));
 
   return { users, isLoading, error };
 }

@@ -41,13 +41,27 @@ export function UserSelector({
       fetchUsers().finally(() => setIsLoading(false));
       setSelectedUsers(initialSelectedUsers);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchUsers, initialSelectedUsers]);
+  
+  // Debug: log users when they change
+  useEffect(() => {
+    if (isOpen) {
+      console.log('UserSelector - users in store:', users.length, users);
+    }
+  }, [isOpen, users]);
 
   const filteredUsers = users.filter((u) => {
-    const matchesSearch = u.username.toLowerCase().includes(search.toLowerCase());
-    const notSelf = u.id !== user?.id;
-    const alreadyShared = selectedUsers.some((su) => su.userId === u.id);
-    return matchesSearch && notSelf && !alreadyShared;
+    // Filter out current user
+    if (u.id === user?.id) return false;
+    
+    // Filter out already shared users
+    if (selectedUsers.some((su) => su.userId === u.id)) return false;
+    
+    // If search is empty, show all users (that pass above filters)
+    if (!search.trim()) return true;
+    
+    // Otherwise, filter by search term
+    return u.username.toLowerCase().includes(search.toLowerCase());
   });
 
   const toggleUser = (userId: string) => {

@@ -9,6 +9,7 @@ import { UserSelector } from '../ui/UserSelector';
 interface CardProps {
   card: CardType;
   labels: Label[];
+  isDragOver?: boolean;
 }
 
 function getUserColor(userId: string): string {
@@ -20,7 +21,7 @@ function getUserColor(userId: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export function Card({ card, labels }: CardProps) {
+export function Card({ card, labels, isDragOver = false }: CardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: card.id,
   });
@@ -98,7 +99,7 @@ export function Card({ card, labels }: CardProps) {
         ref={setNodeRef}
         {...attributes}
         {...listeners}
-        className={`task-card group ${isDragging ? 'dragging' : ''} ${!canWrite ? 'cursor-pointer' : ''}`}
+        className={`task-card group ${isDragging ? 'dragging' : ''} ${isDragOver ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface' : ''} ${!canWrite ? 'cursor-pointer' : ''}`}
         onClick={(e) => {
           const target = e.target as HTMLElement;
           if (target.closest('.share-btn')) {
@@ -116,9 +117,16 @@ export function Card({ card, labels }: CardProps) {
 
         <div className="pl-3">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className="font-medium text-text text-sm leading-snug flex-1">
-              {card.title}
-            </h4>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {card.icon && (
+                <span className="text-lg flex-shrink-0" title="Card icon">
+                  {card.icon}
+                </span>
+              )}
+              <h4 className="font-medium text-text text-sm leading-snug flex-1 truncate">
+                {card.title}
+              </h4>
+            </div>
             <button
               className={`share-btn opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-opacity p-0.5 ${!isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
               title={isOwner ? "Share card" : "Only owner can share"}

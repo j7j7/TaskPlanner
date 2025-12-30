@@ -320,28 +320,69 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   moveCard: async (cardId: string, fromColumnId: string, toColumnId: string, newIndex: number) => {
     const { currentBoard } = get();
-    if (!currentBoard) return;
+    if (!currentBoard) {
+      console.error('moveCard: Missing currentBoard');
+      return;
+    }
 
     try {
       const fromColumn = currentBoard.columns.find((c) => c.id === fromColumnId);
       const toColumn = currentBoard.columns.find((c) => c.id === toColumnId);
-      if (!fromColumn || !toColumn) return;
+      if (!fromColumn || !toColumn) {
+        console.error('moveCard: Column not found', { fromColumnId, toColumnId });
+        return;
+      }
 
-      const cardIndex = fromColumn.cards.findIndex((c) => c.id === cardId);
-      if (cardIndex === -1) return;
+      // Work with copies to avoid mutation issues
+      const fromCards = [...fromColumn.cards];
+      const cardIndex = fromCards.findIndex((c) => c.id === cardId);
+      if (cardIndex === -1) {
+        console.error('moveCard: Card not found in source column', cardId);
+        return;
+      }
 
-      const [movedCard] = fromColumn.cards.splice(cardIndex, 1);
+      const movedCard = { ...fromCards[cardIndex] };
       movedCard.columnId = toColumnId;
 
-      const destCards = [...toColumn.cards];
-      destCards.splice(newIndex, 0, movedCard);
+      let destCards: typeof fromCards;
+      
+      if (fromColumnId === toColumnId) {
+        // Moving within the same column
+        destCards = [...fromCards];
+        // Remove the card from its current position
+        destCards.splice(cardIndex, 1);
+        // Adjust the target index if we removed a card before the target position
+        const adjustedIndex = cardIndex < newIndex ? newIndex - 1 : newIndex;
+        // Insert at the new position
+        destCards.splice(adjustedIndex, 0, movedCard);
+      } else {
+        // Moving to a different column
+        destCards = [...toColumn.cards];
+        destCards.splice(newIndex, 0, movedCard);
+      }
+
+      // Update order property for all cards
+      const destCardsWithOrder = destCards.map((card, index) => ({
+        ...card,
+        order: index,
+        updatedAt: now(),
+      }));
 
       const columns = currentBoard.columns.map((col) => {
-        if (col.id === fromColumnId) {
-          return { ...col, cards: fromColumn.cards, updatedAt: now() };
+        if (col.id === fromColumnId && fromColumnId !== toColumnId) {
+          // Update source column (removed card)
+          const updatedFromCards = fromCards
+            .filter((c) => c.id !== cardId)
+            .map((card, index) => ({
+              ...card,
+              order: index,
+              updatedAt: now(),
+            }));
+          return { ...col, cards: updatedFromCards, updatedAt: now() };
         }
         if (col.id === toColumnId) {
-          return { ...col, cards: destCards, updatedAt: now() };
+          // Update destination column (added card)
+          return { ...col, cards: destCardsWithOrder, updatedAt: now() };
         }
         return col;
       });
@@ -350,7 +391,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         db.tx.boards[currentBoard.id].update({ columns, updatedAt: now() }),
       ]);
     } catch (error) {
-      set({ error: 'Failed to move card' });
+      console.error('moveCard: Error moving card', error);
+      set({ error: `Failed to move card: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
@@ -391,7 +433,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   createLabel: async (name: string, color: string) => {
     const { currentUser } = get();
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.error('createLabel: Missing currentUser');
+      return;
+    }
 
     try {
       await db.transact([
@@ -403,7 +448,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         }),
       ]);
     } catch (error) {
-      set({ error: 'Failed to create label' });
+      console.error('createLabel: Error creating label', error);
+      set({ error: `Failed to create label: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
@@ -411,7 +457,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     try {
       await db.transact([db.tx.labels[labelId].update(data)]);
     } catch (error) {
-      set({ error: 'Failed to update label' });
+      console.error('updateLabel: Error updating label', error);
+      set({ error: `Failed to update label: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
@@ -419,7 +466,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     try {
       await db.transact([db.tx.labels[labelId].delete()]);
     } catch (error) {
-      set({ error: 'Failed to delete label' });
+      console.error('deleteLabel: Error deleting label', error);
+      set({ error: `Failed to delete label: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   },
 
@@ -629,14 +677,18 @@ export function useBoard(boardId: string) {
 }
 
 export function useLabels() {
-  const { result, isLoading, error } = db.useQuery({ labels: {} });
+  const queryResult = db.useQuery({ labels: {} }) || {};
   
-  const labels = result.labels 
-    ? (result.labels as Label[]).map((l) => ({
-        ...l,
-        createdAt: toISOTimestamp(l.createdAt),
-      }))
-    : [];
+  // Check different possible structures (matching useBoards logic)
+  const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
+  const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
+  const error = (queryResult as { error?: Error })?.error;
+
+  const rawLabels = (result as { labels?: Label[] })?.labels || [];
+  const labels = rawLabels.map((l) => ({
+    ...l,
+    createdAt: toISOTimestamp(l.createdAt),
+  }));
     
   return { labels, isLoading, error };
 }

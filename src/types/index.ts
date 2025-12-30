@@ -27,6 +27,7 @@ export interface Card {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
   assignee?: string;
+  icon?: string;
   order: number;
   createdAt: string;
   updatedAt: string;

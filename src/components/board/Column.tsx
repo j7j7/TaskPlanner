@@ -5,12 +5,14 @@ import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Column as ColumnType, SharedUser } from '../../types';
 import { Card } from './Card';
-import { useBoardStore } from '../../store/useBoardStore';
+import { useBoardStore, useLabels } from '../../store/useBoardStore';
 import { useAuth } from '../../context/AuthContext';
 import { UserSelector } from '../ui/UserSelector';
 
 interface ColumnProps {
   column: ColumnType;
+  dragOverId?: string | null;
+  activeCardId?: string | null;
 }
 
 function getUserColor(userId: string): string {
@@ -22,9 +24,13 @@ function getUserColor(userId: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-export function Column({ column }: ColumnProps) {
-  const { createCard, deleteColumn, updateColumn, labels, users, fetchUsers, currentBoard, shareColumn, unshareColumn } = useBoardStore();
+export function Column({ column, dragOverId, activeCardId }: ColumnProps) {
+  const { createCard, deleteColumn, updateColumn, users, fetchUsers, currentBoard, shareColumn, unshareColumn } = useBoardStore();
   const { user } = useAuth();
+  const { labels: allLabels } = useLabels();
+  
+  // Filter labels by current user
+  const labels = allLabels.filter((label) => label.userId === user?.id);
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -252,13 +258,35 @@ export function Column({ column }: ColumnProps) {
             items={column.cards.map((card) => card.id)}
             strategy={verticalListSortingStrategy}
           >
-            {column.cards.map((card) => (
-              <Card
-                key={card.id}
-                card={card}
-                labels={labels}
-              />
-            ))}
+            {column.cards.map((card, index) => {
+              const isOver = dragOverId === card.id && activeCardId !== card.id;
+              const isActive = activeCardId === card.id;
+              
+              // Find the active card's position
+              const activeCardIndex = activeCardId 
+                ? column.cards.findIndex((c) => c.id === activeCardId)
+                : -1;
+              
+              // Show placeholder above if dragging down, or below if dragging up
+              const shouldShowPlaceholderAbove = isOver && activeCardIndex !== -1 && activeCardIndex < index;
+              const shouldShowPlaceholderBelow = isOver && activeCardIndex !== -1 && activeCardIndex > index;
+              
+              return (
+                <div key={card.id}>
+                  {shouldShowPlaceholderAbove && (
+                    <div className="h-2 mx-2 mb-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
+                  )}
+                  <Card
+                    card={card}
+                    labels={labels}
+                    isDragOver={isOver}
+                  />
+                  {shouldShowPlaceholderBelow && (
+                    <div className="h-2 mx-2 mt-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
+                  )}
+                </div>
+              );
+            })}
           </SortableContext>
 
           {canWrite && isAddingCard ? (

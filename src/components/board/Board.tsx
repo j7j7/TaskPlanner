@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, type DragEndEvent, type DragOverEvent, DragOverlay, type DragStartEvent, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { Column } from './Column';
 import type { Card as CardType } from '../../types';
@@ -9,6 +9,7 @@ export function Board() {
   const { currentBoard, moveCard, moveColumn } = useBoardStore();
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -51,10 +52,16 @@ export function Board() {
     }
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    setOverId(over?.id as string || null);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCard(null);
     setActiveColumnId(null);
+    setOverId(null);
 
     if (!over) return;
 
@@ -85,20 +92,37 @@ export function Board() {
 
     if (activeId === overId) return;
 
+    // Check if dropping over a column (moving to a different column)
     const toColumn = columns.find((col) => col.id === overId);
 
     if (toColumn) {
-      const overIndex = toColumn.cards?.findIndex((c) => c.id === overId) ?? 0;
-      const newIndex = overIndex === -1 ? 0 : overIndex;
+      // Dropping over a column - move to the end of that column
+      const newIndex = toColumn.cards.length;
       moveCard(activeId, fromColumn.id, toColumn.id, newIndex);
     } else {
+      // Dropping over another card - find which column that card is in
       const toColumnSame = columns.find((col) =>
         col.cards?.some((c) => c.id === overId)
       );
 
-      if (toColumnSame && toColumnSame.id !== fromColumn.id) {
-        const overIndex = toColumnSame.cards?.findIndex((c) => c.id === overId) ?? 0;
-        moveCard(activeId, fromColumn.id, toColumnSame.id, overIndex);
+      if (toColumnSame) {
+        const overCardIndex = toColumnSame.cards.findIndex((c) => c.id === overId);
+        if (overCardIndex === -1) return;
+
+        // Calculate the new index
+        // If moving within the same column, adjust index based on direction
+        let newIndex = overCardIndex;
+        if (toColumnSame.id === fromColumn.id) {
+          const fromIndex = fromColumn.cards.findIndex((c) => c.id === activeId);
+          // If moving down, insert after the target; if moving up, insert at target position
+          if (fromIndex < overCardIndex) {
+            newIndex = overCardIndex + 1;
+          } else {
+            newIndex = overCardIndex;
+          }
+        }
+
+        moveCard(activeId, fromColumn.id, toColumnSame.id, newIndex);
       }
     }
   };
@@ -108,6 +132,7 @@ export function Board() {
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 h-full min-h-0 overflow-auto">
@@ -116,7 +141,7 @@ export function Board() {
           strategy={horizontalListSortingStrategy}
         >
           {columns.map((column) => (
-            <Column key={column.id} column={column} />
+            <Column key={column.id} column={column} dragOverId={overId} activeCardId={activeCard?.id || null} />
           ))}
         </SortableContext>
       </div>

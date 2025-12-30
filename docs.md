@@ -22,6 +22,14 @@ interface User {
 }
 ```
 
+### SharedUser
+```typescript
+interface SharedUser {
+  userId: string;       // User ID
+  permission: 'read' | 'write';
+}
+```
+
 ### Board
 ```typescript
 interface Board {
@@ -31,7 +39,7 @@ interface Board {
   columns: Column[];
   createdAt: string;
   updatedAt: string;
-  sharedWith: string[]; // Array of user IDs
+  sharedWith: SharedUser[];  // Array of { userId, permission }
 }
 ```
 
@@ -44,7 +52,7 @@ interface Column {
   order: number;        // Display order
   cards: Card[];
   userId: string;       // Inherited from board if null
-  sharedWith: string[]; // Array of user IDs
+  sharedWith: SharedUser[];  // Array of { userId, permission }
 }
 ```
 
@@ -63,7 +71,7 @@ interface Card {
   createdAt: string;
   updatedAt: string;
   userId: string;       // Inherited from column/board if null
-  sharedWith: string[]; // Array of user IDs
+  sharedWith: SharedUser[];  // Array of { userId, permission }
 }
 ```
 
@@ -152,19 +160,29 @@ Middleware validates token, retrieves session, attaches `userId` to request.
 | `create(board)` | Creates new board with structure validation |
 | `update(id, data)` | Updates board title/columns |
 | `delete(id)` | Deletes board |
-| `shareBoard(boardId, userId)` | Adds user to sharedWith array |
+| `shareBoard(boardId, userId, permission)` | Shares board with permission |
+| `updateBoardPermission(boardId, userId, permission)` | Updates share permission |
 | `unshareBoard(boardId, userId)` | Removes user from sharedWith |
-| `shareColumn(boardId, columnId, userId)` | Shares column with user |
+| `shareColumn(boardId, columnId, userId, permission)` | Shares column |
+| `updateColumnPermission(boardId, columnId, userId, permission)` | Updates column permission |
 | `unshareColumn(boardId, columnId, userId)` | Unshares column |
-| `shareCard(boardId, columnId, cardId, userId)` | Shares card with user |
+| `shareCard(boardId, columnId, cardId, userId, permission)` | Shares card |
+| `updateCardPermission(boardId, columnId, cardId, userId, permission)` | Updates card permission |
 | `unshareCard(boardId, columnId, cardId, userId)` | Unshares card |
 
 ### Data Migration (server/store.js:85-103)
 
 `migrateBoards()` ensures backward compatibility:
 - Adds `userId` (inherits from parent if null)
-- Adds `sharedWith` (empty array if null)
+- Adds `sharedWith` (empty array if null, or migrates string[] to SharedUser[])
 - Recursively processes columns and cards
+
+### Permission Checking (server/routes/boards.js)
+
+| Function | Description |
+|----------|-------------|
+| `hasReadAccess(item, userId)` | Check if user has read access |
+| `hasWriteAccess(item, userId)` | Check if user has write access |
 
 ### API Endpoints
 
@@ -178,13 +196,16 @@ Middleware validates token, retrieves session, attaches `userId` to request.
 | GET | /api/boards | List user's boards | Yes |
 | POST | /api/boards | Create board | Yes |
 | GET | /api/boards/:id | Get single board | Yes |
-| PUT | /api/boards/:id | Update board | Yes (owner) |
+| PUT | /api/boards/:id | Update board | Yes (owner/write) |
 | DELETE | /api/boards/:id | Delete board | Yes (owner) |
-| POST | /api/boards/:id/share | Share board | Yes (owner) |
+| PUT | /api/boards/:id/share | Share board | Yes (owner) |
+| PUT | /api/boards/:id/share/:userId/permission | Update permission | Yes (owner) |
 | DELETE | /api/boards/:id/share/:userId | Unshare board | Yes (owner) |
-| POST | /api/boards/:id/columns/:columnId/share | Share column | Yes |
+| PUT | /api/boards/:id/columns/:columnId/share | Share column | Yes |
+| PUT | /api/boards/:id/columns/:columnId/share/:userId/permission | Update column permission | Yes |
 | DELETE | /api/boards/:id/columns/:columnId/share/:userId | Unshare column | Yes |
-| POST | /api/boards/:id/columns/:columnId/cards/:cardId/share | Share card | Yes |
+| PUT | /api/boards/:id/columns/:columnId/cards/:cardId/share | Share card | Yes |
+| PUT | /api/boards/:id/columns/:columnId/cards/:cardId/share/:userId/permission | Update card permission | Yes |
 | DELETE | /api/boards/:id/columns/:columnId/cards/:cardId/share/:userId | Unshare card | Yes |
 | GET | /api/labels | List labels | Yes |
 | POST | /api/labels | Create label | Yes |
@@ -212,11 +233,14 @@ Middleware validates token, retrieves session, attaches `userId` to request.
 | `deleteCard(id)` | Removes card |
 | `moveCard(id, fromCol, toCol, index)` | Moves card (drag-drop) |
 | `moveColumn(id, newIndex)` | Reorders column |
-| `shareBoard(boardId, userId)` | Shares board |
+| `shareBoard(boardId, userId, permission?)` | Shares board |
+| `updateBoardPermission(boardId, userId, permission)` | Updates permission |
 | `unshareBoard(boardId, userId)` | Unshares board |
-| `shareColumn(boardId, colId, userId)` | Shares column |
+| `shareColumn(boardId, colId, userId, permission?)` | Shares column |
+| `updateColumnPermission(boardId, colId, userId, permission)` | Updates permission |
 | `unshareColumn(boardId, colId, userId)` | Unshares column |
-| `shareCard(boardId, colId, cardId, userId)` | Shares card |
+| `shareCard(boardId, colId, cardId, userId, permission?)` | Shares card |
+| `updateCardPermission(boardId, colId, cardId, userId, permission)` | Updates permission |
 | `unshareCard(boardId, colId, cardId, userId)` | Unshares card |
 | `createLabel(name, color)` | Creates label |
 | `updateLabel(id, data)` | Updates label |
@@ -241,7 +265,7 @@ interface BoardState {
 App
 ├── ProtectedRoute (auth check)
 │   └── Layout
-│       ├── Sidebar (board list, create board, logout)
+│       ├── Sidebar (board list, create board, logout, share board)
 │       └── Routes
 │           ├── HomePage (board list)
 │           ├── BoardPage
@@ -254,21 +278,42 @@ App
 └── CardModal (overlay for card editing)
 ```
 
+### UI Components
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| `UserSelector` | `src/components/ui/UserSelector.tsx` | Share modal with permission dropdown |
+| `CardModal` | `src/components/board/CardModal.tsx` | Card edit modal (readOnly mode) |
+| `Sidebar` | `src/components/layout/Sidebar.tsx` | Board sharing UI |
+
 ## Sharing Model
 
 ### Permission Levels
 
-1. **Board Owner**: Full control (share, delete, modify)
-2. **Board Shared User**: Can view, modify, share columns/cards
-3. **Column Shared User**: Can view, modify column and its cards
-4. **Card Shared User**: Can view card
+1. **Read**: View-only access
+   - Can view board/column/card details
+   - Cannot edit, move, or add items
+   - See "readOnly" UI state in card modal
+
+2. **Write**: Edit access
+   - Can edit details
+   - Can move cards between columns
+   - Can add new cards
+   - Cannot delete or share
+
+### Owner Privileges (Only Owner Can)
+
+- Delete items
+- Share/unshare
+- Change permission levels
 
 ### Sharing UI
 
-- Share button appears next to board/column/card titles
-- UserSelector modal shows all users with avatars
-- Owner identified by avatar color/indicator
-- Owner can remove shared users
+- **Share button**: Appears on boards, columns, cards (owner only)
+- **UserSelector modal**: Shows all users with avatar initials
+- **Permission dropdown**: Read/Write toggle with icons (👁️ / ✏️)
+- **Owner indicator**: Avatar in board header for shared boards (hover shows "Username (Owner)")
+- **Permission badges**: Small icons next to avatars in column/card headers
 
 ## ID Generation
 
@@ -305,3 +350,11 @@ npm run dev           # Runs on port 5173
 
 ### Auth Issues
 - Clear cookies: `document.cookie.split(";").forEach(c => document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"))`
+
+### Shared Board Shows "Unknown" for Owner
+- Ensure `fetchUsers()` is called when opening share modal
+- Check `getUserDisplay()` fallback logic for current user
+
+### Font Changes During Drag
+- Fixed by using system fonts instead of custom web fonts
+- Set `-webkit-font-smoothing: subpixel-antialiased` during drag operations

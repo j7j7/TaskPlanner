@@ -34,8 +34,9 @@ taskplanner/
 │   ├── store.js           # JSON file read/write operations
 │   └── routes/            # API route handlers
 │       ├── auth.js        # /api/auth endpoints
-│       ├── boards.js      # /api/boards endpoints
-│       └── labels.js      # /api/labels endpoints
+│       ├── boards.js      # /api/boards endpoints (sharing, permissions)
+│       ├── labels.js      # /api/labels endpoints
+│       └── users.js       # /api/users endpoint
 ├── src/                    # Frontend (React + TypeScript)
 │   ├── App.css            # App styles
 │   ├── App.tsx            # Main App component
@@ -47,31 +48,32 @@ taskplanner/
 │   │   ├── auth/         # Authentication components
 │   │   │   └── ProtectedRoute.tsx
 │   │   ├── board/        # Board components
-│   │   │   ├── Board.tsx        # Main board container
-│   │   │   ├── Card.tsx         # Draggable card component
-│   │   │   ├── CardModal.tsx    # Card edit modal
-│   │   │   └── Column.tsx       # Column with cards
+│   │   │   ├── Board.tsx        # Main board container with DndContext
+│   │   │   ├── Card.tsx         # Draggable card with sharing UI
+│   │   │   ├── CardModal.tsx    # Card edit modal (readOnly mode)
+│   │   │   └── Column.tsx       # Column with cards and sharing UI
 │   │   ├── layout/       # Layout components
 │   │   │   ├── Layout.tsx       # Main layout wrapper
-│   │   │   └── Sidebar.tsx      # Sidebar with board list
+│   │   │   └── Sidebar.tsx      # Sidebar with board list and sharing
 │   │   └── ui/           # Reusable UI components
 │   │       ├── Button.tsx       # Button component
 │   │       ├── Input.tsx        # Input component
-│   │       └── Modal.tsx        # Modal dialog
+│   │       ├── Modal.tsx        # Modal dialog
+│   │       └── UserSelector.tsx # Share modal with permission dropdown
 │   ├── hooks/            # Custom React hooks
 │   │   └── useAuth.ts    # Authentication hook
 │   ├── pages/            # Page components
-│   │   ├── BoardPage.tsx     # Individual board view
+│   │   ├── BoardPage.tsx     # Individual board view with owner indicator
 │   │   ├── HomePage.tsx      # Dashboard with boards
 │   │   ├── LoginPage.tsx     # Login form
 │   │   └── RegisterPage.tsx  # Registration form
 │   ├── store/            # State management
-│   │   └── useBoardStore.ts  # Zustand store
+│   │   └── useBoardStore.ts  # Zustand store (share actions, permissions)
 │   ├── styles/           # Additional styles
 │   ├── types/            # TypeScript types
-│   │   └── index.ts      # Type definitions
+│   │   └── index.ts      # Type definitions (SharedUser, SharePermission)
 │   └── utils/            # Utility functions
-│       └── api.ts        # API client
+│       └── api.ts        # API client (share with permission support)
 ├── start.sh               # Startup script (runs both servers)
 ├── tailwind.config.js     # Tailwind CSS configuration
 ├── tree.md               # This file
@@ -100,10 +102,11 @@ taskplanner/
 |------|---------|
 | `server/index.js` | Express server entry point, CORS, middleware |
 | `server/auth.js` | Password hashing, session management |
-| `server/store.js` | Read/write JSON files for data persistence |
+| `server/store.js` | Read/write JSON files, migration, sharing methods |
 | `server/routes/auth.js` | Register, login, logout, me endpoints |
-| `server/routes/boards.js` | CRUD operations for boards |
+| `server/routes/boards.js` | CRUD + sharing/permissions for boards |
 | `server/routes/labels.js` | CRUD operations for labels |
+| `server/routes/users.js` | List all users endpoint |
 
 ### Frontend Files
 
@@ -113,12 +116,14 @@ taskplanner/
 | `src/main.tsx` | React DOM render entry |
 | `src/index.css` | Global styles, Tailwind imports |
 | `src/components/board/Board.tsx` | Drag & drop context, column rendering |
-| `src/components/board/Column.tsx` | Column with cards, double-click to add |
-| `src/components/board/Card.tsx` | Draggable card with labels, priority |
+| `src/components/board/Column.tsx` | Column with cards, sharing UI |
+| `src/components/board/Card.tsx` | Draggable card with sharing UI |
 | `src/components/board/CardModal.tsx` | Edit card modal |
-| `src/components/layout/Sidebar.tsx` | Board navigation, export/import |
-| `src/store/useBoardStore.ts` | Zustand store for boards & labels |
+| `src/components/layout/Sidebar.tsx` | Board navigation, export/import, sharing |
+| `src/components/ui/UserSelector.tsx` | Share modal with permission dropdown |
+| `src/store/useBoardStore.ts` | Zustand store for boards, labels, sharing |
 | `src/hooks/useAuth.ts` | Authentication state & actions |
+| `src/pages/BoardPage.tsx` | Board view with owner indicator for shared boards |
 
 ### Data Files
 
@@ -141,6 +146,14 @@ taskplanner/
 }
 ```
 
+### SharedUser
+```typescript
+{
+  userId: string;
+  permission: 'read' | 'write';
+}
+```
+
 ### Board
 ```typescript
 {
@@ -150,6 +163,7 @@ taskplanner/
   columns: Column[];
   createdAt: string;
   updatedAt: string;
+  sharedWith: SharedUser[];
 }
 ```
 
@@ -161,6 +175,8 @@ taskplanner/
   color: string;
   order: number;
   cards: Card[];
+  userId: string;
+  sharedWith: SharedUser[];
 }
 ```
 
@@ -177,6 +193,8 @@ taskplanner/
   order: number;
   createdAt: string;
   updatedAt: string;
+  userId: string;
+  sharedWith: SharedUser[];
 }
 ```
 
@@ -189,3 +207,25 @@ taskplanner/
   userId: string;  // 'default' for system labels
 }
 ```
+
+## Recent Updates
+
+### Permissions System (Latest)
+- Added granular sharing with read/write permissions
+- Only owners can delete and manage permissions
+- Read-only users see disabled edit controls
+- Write users can edit and move cards
+- Owner indicator avatar in board header for shared boards
+
+### Bug Fixes
+- Fixed owner display showing "unknown" in sharing UI
+- Removed duplicate code in boards.js routes
+- Fixed owner avatar showing for non-owners
+- Removed ring indicator from column avatars
+- Switched to system fonts to prevent font loading flicker
+
+### UI Changes
+- Owner avatar in board header (right side) for shared boards only
+- Hover tooltips show "Username (Owner)" for owners
+- Permission icons (👁️ Read, ✏️ Write) in share modal
+- No "Owner" label text - only tooltip indication

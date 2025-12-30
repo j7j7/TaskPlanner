@@ -12,6 +12,7 @@ A production-ready Kanban-style task management application with a distinctive n
 - **Export/Import** - Backup and share boards as JSON files
 - **Responsive Design** - Works on desktop and mobile devices
 - **Double-Click to Add** - Double-click anywhere in a column to quickly add a card
+- **Board Sharing** - Share boards, columns, and cards with read/write permissions
 
 ## Tech Stack
 
@@ -83,7 +84,8 @@ taskplanner/
 │   └── routes/          # API routes
 │       ├── auth.js      # /api/auth endpoints
 │       ├── boards.js    # /api/boards endpoints
-│       └── labels.js    # /api/labels endpoints
+│       ├── labels.js    # /api/labels endpoints
+│       └── users.js     # /api/users endpoint
 ├── src/                  # React frontend
 │   ├── components/      # React components
 │   │   ├── auth/       # Authentication components
@@ -126,6 +128,20 @@ taskplanner/
 | GET | /api/boards/:id | Get specific board |
 | PUT | /api/boards/:id | Update board |
 | DELETE | /api/boards/:id | Delete board |
+| PUT | /api/boards/:id/share | Share board (body: { userId, permission }) |
+| PUT | /api/boards/:id/share/:userId/permission | Update permission |
+| DELETE | /api/boards/:id/share/:userId | Unshare board |
+| PUT | /api/boards/:id/columns/:columnId/share | Share column |
+| PUT | /api/boards/:id/columns/:columnId/share/:userId/permission | Update column permission |
+| DELETE | /api/boards/:id/columns/:columnId/share/:userId | Unshare column |
+| PUT | /api/boards/:id/columns/:columnId/cards/:cardId/share | Share card |
+| PUT | /api/boards/:id/columns/:columnId/cards/:cardId/share/:userId/permission | Update card permission |
+| DELETE | /api/boards/:id/columns/:columnId/cards/:cardId/share/:userId | Unshare card |
+
+### Users
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/users | Get all users (for sharing) |
 
 ### Labels
 | Method | Endpoint | Description |
@@ -161,6 +177,26 @@ JWT_SECRET=your-secret-key-here
 # Node environment
 NODE_ENV=development
 ```
+
+## Sharing Permissions
+
+### Permission Levels
+
+- **Read**: View-only access - cannot edit details or move cards
+- **Write**: Can edit details, move cards between columns, add new cards
+
+### Sharing Hierarchy
+
+- **Board Owner**: Full control (share, delete, manage permissions)
+- **Board Shared User**: Access to entire board based on permission level
+- **Column Shared User**: Access to specific column and its cards
+- **Card Shared User**: Access to specific card only
+
+### Only Owners Can
+
+- Delete boards, columns, or cards
+- Share/unshare items
+- Change permission levels
 
 ## License
 

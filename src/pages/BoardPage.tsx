@@ -5,10 +5,21 @@ import { Board } from '../components/board/Board';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+
+function getUserColor(userId: string): string {
+  const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
 
 export function BoardPage() {
   const { id } = useParams<{ id: string }>();
-  const { currentBoard, fetchBoard, fetchLabels, fetchUsers, createColumn, error, clearError, clearCurrentBoard } = useBoardStore();
+  const { currentBoard, fetchBoard, fetchLabels, fetchUsers, createColumn, error, clearError, clearCurrentBoard, users } = useBoardStore();
+  const { user } = useAuth();
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [newColumnColor, setNewColumnColor] = useState('#3b82f6');
@@ -38,6 +49,10 @@ export function BoardPage() {
     setIsAddColumnModalOpen(false);
   };
 
+  const isShared = currentBoard && (currentBoard.sharedWith?.length ?? 0) > 0;
+
+  const owner = currentBoard ? (users.find(u => u.id === currentBoard.userId) || { username: 'Unknown' }) : null;
+
   if (!id) {
     return <Navigate to="/" replace />;
   }
@@ -59,14 +74,27 @@ export function BoardPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-2xl font-display font-bold text-text truncate">
-              {currentBoard?.title || 'Loading...'}
-            </h1>
-            {currentBoard && (
-              <p className="text-xs sm:text-sm text-textMuted mt-1">
-                {currentBoard.columns?.length ?? 0} columns
-              </p>
+          <div className="min-w-0 flex items-center gap-3">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-display font-bold text-text truncate">
+                {currentBoard?.title || 'Loading...'}
+              </h1>
+              {currentBoard && (
+                <p className="text-xs sm:text-sm text-textMuted mt-1">
+                  {currentBoard.columns?.length ?? 0} columns
+                </p>
+              )}
+            </div>
+            {isShared && owner && (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: getUserColor(currentBoard.userId) }}
+                title={`${owner.username} (Owner)`}
+              >
+                <span className="text-background text-sm font-bold">
+                  {owner.username.charAt(0).toUpperCase()}
+                </span>
+              </div>
             )}
           </div>
 

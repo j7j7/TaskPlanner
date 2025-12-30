@@ -52,7 +52,10 @@ export function Card({ card, labels }: CardProps) {
     : [card.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
 
   const getUserDisplay = (userId: string) => {
-    return users.find(x => x.id === userId) || (user?.id === userId ? user : null);
+    const found = users.find(x => x.id === userId);
+    if (found) return found;
+    if (user?.id === userId) return user;
+    return null;
   };
 
   const getUserTitle = (userId: string) => {

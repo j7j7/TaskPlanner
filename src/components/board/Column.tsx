@@ -87,14 +87,17 @@ export function Column({ column }: ColumnProps) {
     : [column.userId, ...sharedUsers.map(su => su.userId)].filter(Boolean);
 
   const getUserDisplay = (userId: string) => {
-    return users.find(x => x.id === userId) || (user?.id === userId ? user : null);
+    const found = users.find(x => x.id === userId);
+    if (found) return found;
+    if (user?.id === userId) return user;
+    return null;
   };
 
   const getUserTitle = (userId: string) => {
     const u = getUserDisplay(userId);
     if (!u) return 'Unknown';
-    const isCardOwner = userId === column.userId;
-    return isCardOwner ? `${u.username} (Owner)` : u.username;
+    const isColumnOwner = userId === column.userId;
+    return isColumnOwner ? `${u.username} (Owner)` : u.username;
   };
 
   const handleRemoveSharedUser = async (userId: string) => {
@@ -105,7 +108,7 @@ export function Column({ column }: ColumnProps) {
     <>
       <div
         className={`board-column flex flex-col h-full max-h-full transition-all duration-200 shrink-0 sm:shrink w-full sm:w-72 max-w-full ${
-          isOver ? 'border-accent bg-surfaceLight/50' : ''
+          isOver ? 'border-accent bg-surfaceLight/50 drag-over' : ''
         }`}
       >
         <div
@@ -169,9 +172,7 @@ export function Column({ column }: ColumnProps) {
                   className={`group relative flex items-center ${index > 0 ? '-ml-2' : ''}`}
                 >
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center border-2 border-surface ${
-                      sharedUser?.permission === 'write' ? 'ring-1 ring-accent' : ''
-                    }`}
+                    className="w-6 h-6 rounded-full flex items-center justify-center border-2 border-surface"
                     style={{ backgroundColor: getUserColor(userId || 'unknown') }}
                     title={getUserTitle(userId || '')}
                   >

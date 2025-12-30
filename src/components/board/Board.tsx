@@ -100,7 +100,7 @@ export function Board() {
 
       <DragOverlay>
         {activeCard ? (
-          <div className="task-card dragging bg-surfaceLight border-2 border-accent rounded-lg p-3 rotate-2 cursor-grabbing">
+          <div className="task-card dragging cursor-grabbing">
             <h4 className="font-medium text-text">{activeCard.title}</h4>
           </div>
         ) : null}

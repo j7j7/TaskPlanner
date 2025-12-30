@@ -90,6 +90,13 @@ export function Column({ column }: ColumnProps) {
     return users.find(x => x.id === userId) || (user?.id === userId ? user : null);
   };
 
+  const getUserTitle = (userId: string) => {
+    const u = getUserDisplay(userId);
+    if (!u) return 'Unknown';
+    const isCardOwner = userId === column.userId;
+    return isCardOwner ? `${u.username} (Owner)` : u.username;
+  };
+
   const handleRemoveSharedUser = async (userId: string) => {
     await handleUnshare(userId);
   };
@@ -166,7 +173,7 @@ export function Column({ column }: ColumnProps) {
                       sharedUser?.permission === 'write' ? 'ring-1 ring-accent' : ''
                     }`}
                     style={{ backgroundColor: getUserColor(userId || 'unknown') }}
-                    title={u?.username || 'Unknown'}
+                    title={getUserTitle(userId || '')}
                   >
                     <span className="text-background text-xs font-bold">
                       {(u?.username || '?').charAt(0).toUpperCase()}
@@ -186,11 +193,6 @@ export function Column({ column }: ColumnProps) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
-                  )}
-                  {!isOwner && index === 0 && (
-                    <span className="ml-1 text-[10px] text-textMuted uppercase tracking-wider">
-                      Owner
-                    </span>
                   )}
                 </div>
               );

@@ -55,6 +55,13 @@ export function Card({ card, labels }: CardProps) {
     return users.find(x => x.id === userId) || (user?.id === userId ? user : null);
   };
 
+  const getUserTitle = (userId: string) => {
+    const u = getUserDisplay(userId);
+    if (!u) return 'Unknown';
+    const isCardOwner = userId === card.userId;
+    return isCardOwner ? `${u.username} (Owner)` : u.username;
+  };
+
   const handleShare = async (userId: string, permission?: 'read' | 'write') => {
     if (currentBoard) {
       const column = currentBoard.columns.find(col => col.cards.some(c => c.id === card.id));
@@ -164,7 +171,7 @@ export function Card({ card, labels }: CardProps) {
                         sharedUser?.permission === 'write' ? 'ring-1 ring-accent' : ''
                       }`}
                       style={{ backgroundColor: getUserColor(userId || 'unknown') }}
-                      title={u?.username || 'Unknown'}
+                      title={getUserTitle(userId || '')}
                     >
                       <span className="text-[10px] text-background font-bold">
                         {(u?.username || '?').charAt(0).toUpperCase()}

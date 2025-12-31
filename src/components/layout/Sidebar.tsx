@@ -400,9 +400,9 @@ export function Sidebar() {
                 )}
                 {board.userId === user?.id && (
                   <button
-                    onClick={(e) => handleOpenShare(board.id, e)}
-                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
-                    data-tooltip="Share board"
+                    onClick={(e) => handleDeleteBoard(board.id, e)}
+                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-danger transition-all p-1"
+                    data-tooltip="Delete board"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

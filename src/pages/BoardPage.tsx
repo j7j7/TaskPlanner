@@ -93,16 +93,6 @@ export function BoardPage() {
       <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex-shrink-0">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex items-center gap-3">
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-display font-bold text-text truncate">
-                {board?.title || 'Loading...'}
-              </h1>
-              {board && (
-                <p className="text-xs sm:text-sm text-textMuted mt-1">
-                  {board.columns?.length ?? 0} columns
-                </p>
-              )}
-            </div>
             {isShared && owner && (
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
@@ -114,6 +104,16 @@ export function BoardPage() {
                 </span>
               </div>
             )}
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-display font-bold text-text truncate">
+                {board?.title || 'Loading...'}
+              </h1>
+              {board && (
+                <p className="text-xs sm:text-sm text-textMuted mt-1">
+                  {board.columns?.length ?? 0} columns
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">

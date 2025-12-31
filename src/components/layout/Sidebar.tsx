@@ -339,7 +339,7 @@ export function Sidebar() {
               ) : (
                 <Link
                   to={`/board/${board.id}`}
-                  className="flex-1 truncate font-medium flex items-center gap-2"
+                  className="flex-1 font-medium flex items-center gap-2 min-w-0"
                 >
                   <div
                     className="w-6 h-6 rounded flex items-center justify-center shrink-0"
@@ -349,10 +349,10 @@ export function Sidebar() {
                       {(board.title || 'U').charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <span className="truncate">{board.title}</span>
+                  <span className="group-hover:truncate min-w-0">{board.title}</span>
                 </Link>
               )}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-200">
                 <button
                   onClick={(e) => handleOpenShare(board.id, e)}
                   className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"

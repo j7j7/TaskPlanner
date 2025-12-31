@@ -2,6 +2,8 @@
 
 A production-ready Kanban-style multi-user task management application with a simple to use design.
 
+![TaskPlanner Screenshot](TaskPlanner-Example.png)
+
 ## Features
 
 - **User Authentication** - Email magic code login via InstantDB

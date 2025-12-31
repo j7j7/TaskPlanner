@@ -300,7 +300,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     try {
       // Remove fields that shouldn't be updated directly (they're managed by the system)
-      const { id: _, columnId, boardId, createdAt, ...updateFields } = updates as any;
+      const { id: _, columnId, boardId, createdAt, ...updateFields } = updates;
       
       await db.transact([
         db.tx.cards[cardId].update({
@@ -350,7 +350,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         return;
       }
 
-      const transactions: any[] = [];
+      const transactions: Parameters<typeof db.transact>[0] = [];
       
       if (fromColumnId === toColumnId) {
         // Moving within the same column - reorder cards
@@ -875,7 +875,7 @@ export function useUsers() {
   const users = rawUsers.map((u) => ({
     id: u.id,
     username: u.username || u.email || u.id,
-    email: (u as any).email || u.username || u.id,
+    email: u.email || u.username || u.id,
     createdAt: toISOTimestamp(u.createdAt),
   }));
 

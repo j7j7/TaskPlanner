@@ -8,6 +8,7 @@ export interface SharedUser {
 export interface User {
   id: string;
   username: string;
+  email?: string;
   createdAt: string;
 }
 
@@ -21,6 +22,7 @@ export interface Label {
 export interface Card {
   id: string;
   columnId: string;
+  boardId: string;
   title: string;
   description?: string;
   labels: string[];
@@ -37,11 +39,14 @@ export interface Card {
 
 export interface Column {
   id: string;
+  boardId: string;
   title: string;
   color: string;
   order: number;
   cards: Card[];
   userId: string;
+  createdAt: string;
+  updatedAt: string;
   sharedWith: SharedUser[];
 }
 

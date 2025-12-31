@@ -18,6 +18,14 @@ function getBoardColor(boardId: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+function hasBoardWriteAccess(board: Board, userId: string | undefined): boolean {
+  if (!userId) return false;
+  if (board.userId === userId) return true;
+  const sharedWith = board.sharedWith || [];
+  const share = sharedWith.find((s) => s.userId === userId);
+  return share?.permission === 'write';
+}
+
 export function Sidebar() {
   const { user, logout, updateUsername } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -62,6 +70,9 @@ export function Sidebar() {
     e.preventDefault();
     e.stopPropagation();
 
+    const board = boards.find(b => b.id === boardId);
+    if (!board || board.userId !== user?.id) return;
+
     if (window.confirm('Delete this board?')) {
       await deleteBoard(boardId);
       if (currentBoard?.id === boardId) {
@@ -73,12 +84,18 @@ export function Sidebar() {
   const handleStartEdit = (board: Board, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!hasBoardWriteAccess(board, user?.id)) return;
     setEditingBoardId(board.id);
     setEditingBoardTitle(board.title);
   };
 
   const handleSaveEdit = async (boardId: string) => {
     if (!editingBoardTitle.trim()) {
+      setEditingBoardId(null);
+      return;
+    }
+    const board = boards.find(b => b.id === boardId);
+    if (!board || !hasBoardWriteAccess(board, user?.id)) {
       setEditingBoardId(null);
       return;
     }
@@ -353,32 +370,38 @@ export function Sidebar() {
                 </Link>
               )}
               <div className="flex items-center gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-200">
-                <button
-                  onClick={(e) => handleOpenShare(board.id, e)}
-                  className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
-                  title="Share board"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={(e) => handleStartEdit(board, e)}
-                  className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
-                  title="Edit board"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={(e) => handleDeleteBoard(board.id, e)}
-                  className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-danger transition-all p-1"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                {board.userId === user?.id && (
+                  <button
+                    onClick={(e) => handleOpenShare(board.id, e)}
+                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
+                    title="Share board"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                  </button>
+                )}
+                {hasBoardWriteAccess(board, user?.id) && (
+                  <button
+                    onClick={(e) => handleStartEdit(board, e)}
+                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
+                    title="Edit board"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
+                {board.userId === user?.id && (
+                  <button
+                    onClick={(e) => handleDeleteBoard(board.id, e)}
+                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-danger transition-all p-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           ))}

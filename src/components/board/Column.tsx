@@ -192,7 +192,7 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                   setIsAddingCard(true);
                 }}
                 className="text-textMuted hover:text-accent transition-colors p-1"
-                title="Add card"
+                data-tooltip="Add card"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -204,7 +204,7 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                   setIsShareModalOpen(true);
                 }}
                 className={`${isOwner ? 'text-textMuted hover:text-accent' : 'opacity-50 cursor-not-allowed'} transition-colors p-1`}
-                title={isOwner ? "Share column" : "Only owner can share"}
+                data-tooltip={isOwner ? "Share column" : "Only owner can share"}
                 disabled={!isOwner}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,14 +240,14 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center border-2 border-surface"
                     style={{ backgroundColor: getUserColor(userId || 'unknown') }}
-                    title={getUserTitle(userId || '')}
+                    data-tooltip={getUserTitle(userId || '')}
                   >
                     <span className="text-background text-xs font-bold">
                       {(u?.username || '?').charAt(0).toUpperCase()}
                     </span>
                   </div>
                   {sharedUser && (
-                    <span className="absolute -top-2 -right-2 text-[10px]" title={`${sharedUser.permission} access`}>
+                    <span className="absolute -top-2 -right-2 text-[10px]" data-tooltip={`${sharedUser.permission} access`}>
                       {sharedUser.permission === 'write' ? '✏️' : '👁️'}
                     </span>
                   )}

@@ -97,7 +97,7 @@ export function BoardPage() {
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                 style={{ backgroundColor: getUserColor(board?.userId || '') }}
-                title={`${owner.username} (Owner)`}
+                data-tooltip={`${owner.username} (Owner)`}
               >
                 <span className="text-background text-sm font-bold">
                   {owner.username.charAt(0).toUpperCase()}
@@ -120,7 +120,7 @@ export function BoardPage() {
             <button
               onClick={() => setIsAddColumnModalOpen(true)}
               className="p-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
-              title="Add Column"
+              data-tooltip="Add Column"
             >
               <svg className="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -129,7 +129,7 @@ export function BoardPage() {
             <button
               onClick={() => setIsRotated(!isRotated)}
               className={`p-2 rounded-lg border border-border hover:bg-surface transition-colors ${isRotated ? 'bg-accent/10 text-accent' : 'text-textMuted'}`}
-              title={isRotated ? 'Switch to columns view' : 'Switch to rows view'}
+              data-tooltip={isRotated ? 'Switch to columns view' : 'Switch to rows view'}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

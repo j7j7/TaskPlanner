@@ -217,7 +217,7 @@ export function Sidebar() {
           <button
             onClick={() => setIsCollapsed(false)}
             className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity"
-            title="Expand sidebar"
+            data-tooltip="Expand sidebar"
           >
             <svg className="w-5 h-5 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -237,7 +237,7 @@ export function Sidebar() {
                     : 'hover:opacity-80'
                 }`}
                 style={{ backgroundColor: getBoardColor(board.id) }}
-                title={board.title || 'Untitled'}
+                data-tooltip={board.title || 'Untitled'}
               >
                 <span className="text-background font-display font-bold text-sm">
                   {(board.title || 'U').charAt(0).toUpperCase()}
@@ -257,7 +257,7 @@ export function Sidebar() {
           <button
             onClick={toggleTheme}
             className="w-10 h-10 bg-surfaceLight rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            data-tooltip={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
               <svg className="w-5 h-5 text-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,7 +272,7 @@ export function Sidebar() {
           <button
             onClick={handleOpenUserEdit}
             className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
-            title="Edit profile"
+            data-tooltip="Edit profile"
           >
             <span className="text-accent font-display font-medium text-sm">
               {user?.username?.charAt(0).toUpperCase()}
@@ -298,7 +298,7 @@ export function Sidebar() {
         <button
           onClick={() => setIsCollapsed(true)}
           className="text-textMuted hover:text-text transition-colors p-1"
-          title="Collapse sidebar"
+          data-tooltip="Collapse sidebar"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -315,7 +315,7 @@ export function Sidebar() {
             <button
               onClick={handleExport}
               className="text-textMuted hover:text-accent transition-colors p-1"
-              title="Export boards"
+              data-tooltip="Export boards"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -324,7 +324,7 @@ export function Sidebar() {
             <button
               onClick={handleImportClick}
               className="text-textMuted hover:text-accent transition-colors p-1"
-              title="Import boards"
+              data-tooltip="Import boards"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -333,7 +333,7 @@ export function Sidebar() {
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="text-textMuted hover:text-accent transition-colors p-1"
-              title="Create new board"
+              data-tooltip="Create new board"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -380,7 +380,7 @@ export function Sidebar() {
                   <button
                     onClick={(e) => handleOpenShare(board.id, e)}
                     className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
-                    title="Share board"
+                    data-tooltip="Share board"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -391,7 +391,7 @@ export function Sidebar() {
                   <button
                     onClick={(e) => handleStartEdit(board, e)}
                     className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
-                    title="Edit board"
+                    data-tooltip="Edit board"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -400,8 +400,9 @@ export function Sidebar() {
                 )}
                 {board.userId === user?.id && (
                   <button
-                    onClick={(e) => handleDeleteBoard(board.id, e)}
-                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-danger transition-all p-1"
+                    onClick={(e) => handleOpenShare(board.id, e)}
+                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
+                    data-tooltip="Share board"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -425,7 +426,7 @@ export function Sidebar() {
           <button
             onClick={handleOpenUserEdit}
             className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
-            title="Edit profile"
+            data-tooltip="Edit profile"
           >
             <span className="text-accent font-display font-medium text-sm">
               {user?.username?.charAt(0).toUpperCase()}
@@ -440,7 +441,7 @@ export function Sidebar() {
           <button
             onClick={toggleTheme}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all font-display"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            data-tooltip={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
               <>

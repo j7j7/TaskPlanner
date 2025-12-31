@@ -134,7 +134,7 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
           <div className="flex items-start justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {card.icon && (
-                <span className="text-lg flex-shrink-0" title="Card icon">
+                <span className="text-lg flex-shrink-0" data-tooltip="Card icon">
                   {card.icon}
                 </span>
               )}
@@ -144,7 +144,7 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
             </div>
             <button
               className={`share-btn opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-opacity p-0.5 ${!isOwner ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title={isOwner ? "Share card" : "Only owner can share"}
+              data-tooltip={isOwner ? "Share card" : "Only owner can share"}
               onClick={(e) => {
                 e.stopPropagation();
                 if (isOwner) {
@@ -197,14 +197,14 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
                         sharedUser?.permission === 'write' ? 'ring-1 ring-accent' : ''
                       }`}
                       style={{ backgroundColor: getUserColor(userId || 'unknown') }}
-                      title={getUserTitle(userId || '')}
+                      data-tooltip={getUserTitle(userId || '')}
                     >
                       <span className="text-[10px] text-background font-bold">
                         {(u?.username || '?').charAt(0).toUpperCase()}
                       </span>
                     </div>
                     {sharedUser && (
-                      <span className="absolute -top-1.5 -right-1.5 text-[8px]" title={`${sharedUser.permission} access`}>
+                      <span className="absolute -top-1.5 -right-1.5 text-[8px]" data-tooltip={`${sharedUser.permission} access`}>
                         {sharedUser.permission === 'write' ? '✏️' : '👁️'}
                       </span>
                     )}

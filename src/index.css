@@ -296,4 +296,32 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #555;
   }
+
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: fixed;
+    transform: translateX(-50%);
+    padding: 6px 10px;
+    background: #333;
+    color: white;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    z-index: 2147483647;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    left: 50%;
+    bottom: calc(100% + 8px);
+  }
+
+  [data-tooltip]:hover::after {
+    opacity: 1;
+  }
+
+  .light [data-tooltip]::after {
+    background: #666;
+    color: white;
+  }
 }

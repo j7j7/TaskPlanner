@@ -165,7 +165,7 @@ export function IconPicker({ isOpen, onClose, onSelect, currentIcon }: IconPicke
                           ? 'border-accent bg-accent/10'
                           : 'border-transparent hover:border-border'
                       }`}
-                      title={icon}
+                      data-tooltip={icon}
                     >
                       {icon}
                     </button>

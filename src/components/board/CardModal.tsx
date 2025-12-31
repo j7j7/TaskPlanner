@@ -155,7 +155,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                 onClick={() => !readOnly && setIsIconPickerOpen(true)}
                 className="text-2xl hover:scale-110 transition-transform flex-shrink-0"
                 disabled={readOnly}
-                title="Change icon"
+                data-tooltip="Change icon"
               >
                 {icon}
               </button>
@@ -173,7 +173,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                 type="button"
                 onClick={() => setIsIconPickerOpen(true)}
                 className="px-3 py-2 text-textMuted hover:text-accent hover:bg-surfaceLight rounded-lg transition-colors flex-shrink-0"
-                title="Add icon"
+                data-tooltip="Add icon"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -329,16 +329,16 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                       <div className="flex gap-1 items-center">
                         <div className="flex gap-1">
                           {LABEL_COLORS.slice(0, 5).map((color) => (
-                            <button
-                              key={color}
-                              type="button"
-                              onClick={() => setEditLabelColor(color)}
-                              className={`w-5 h-5 rounded border-2 transition-all ${
-                                editLabelColor === color ? 'border-white scale-110' : 'border-transparent'
-                              }`}
-                              style={{ backgroundColor: color }}
-                              title="Select color"
-                            />
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setEditLabelColor(color)}
+                            className={`w-5 h-5 rounded border-2 transition-all ${
+                              editLabelColor === color ? 'border-white scale-110' : 'border-transparent'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            data-tooltip="Select color"
+                          />
                           ))}
                         </div>
                         <button
@@ -383,7 +383,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                             type="button"
                             onClick={() => handleStartEditLabel(label)}
                             className="text-textMuted hover:text-accent p-0.5"
-                            title="Edit label"
+                            data-tooltip="Edit label"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -393,7 +393,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                             type="button"
                             onClick={() => handleDeleteLabel(label.id)}
                             className="text-textMuted hover:text-danger p-0.5"
-                            title="Delete label"
+                            data-tooltip="Delete label"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

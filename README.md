@@ -4,7 +4,7 @@ A production-ready Kanban-style task management application with a distinctive n
 
 ## Features
 
-- **User Authentication** - Register and login with secure cookie-based sessions
+- **User Authentication** - Email magic code login via InstantDB
 - **Multi-Board Support** - Create, rename, and delete multiple boards
 - **Drag & Drop** - Intuitive card reordering with @dnd-kit
 - **Label System** - Pre-configured and custom labels with colors
@@ -22,9 +22,8 @@ A production-ready Kanban-style task management application with a distinctive n
 | Drag & Drop | @dnd-kit/core, @dnd-kit/sortable |
 | State Management | Zustand |
 | Styling | Tailwind CSS v4 |
-| Backend | Express.js (Node.js) |
-| Storage | Local JSON files |
-| Authentication | Cookie-based sessions |
+| Backend/Database | InstantDB (serverless) |
+| Authentication | InstantDB Auth (email magic codes) |
 
 ## Getting Started
 
@@ -32,6 +31,7 @@ A production-ready Kanban-style task management application with a distinctive n
 
 - Node.js 18+
 - npm or pnpm
+- InstantDB account (free at instantdb.com)
 
 ### Installation
 
@@ -40,25 +40,23 @@ A production-ready Kanban-style task management application with a distinctive n
 npm install
 ```
 
-### Running the Application
+### Configuration
 
-**Option 1: Using the start script (recommended)**
+Create a `.env` file with your InstantDB App ID:
+
 ```bash
-./start.sh
+cp .env.example .env
+# Edit .env and add your VITE_INSTANT_APP_ID
 ```
 
-**Option 2: Manual start**
-```bash
-# Terminal 1: Start the backend server
-npm run server
+### Running the Application
 
-# Terminal 2: Start the frontend dev server
+```bash
+# Start development server
 npm run dev
 ```
 
-The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
+The application will be available at: http://localhost:5173
 
 ### Building for Production
 
@@ -72,111 +70,43 @@ The production build will be in the `dist/` folder.
 
 ```
 taskplanner/
-├── data/                  # JSON data storage
-│   ├── boards.json       # Board data
-│   ├── users.json        # User accounts
-│   ├── sessions.json     # Session data
-│   └── labels.json       # Label definitions
-├── server/               # Express backend
-│   ├── index.js         # Server entry point
-│   ├── auth.js          # Authentication logic
-│   ├── store.js         # JSON file operations
-│   └── routes/          # API routes
-│       ├── auth.js      # /api/auth endpoints
-│       ├── boards.js    # /api/boards endpoints
-│       ├── labels.js    # /api/labels endpoints
-│       └── users.js     # /api/users endpoint
 ├── src/                  # React frontend
 │   ├── components/      # React components
-│   │   ├── auth/       # Authentication components
-│   │   ├── board/      # Board components
-│   │   ├── layout/     # Layout components
-│   │   └── ui/         # UI components
-│   ├── hooks/          # Custom React hooks
+│   │   ├── board/      # Board, Column, Card components
+│   │   ├── layout/     # Layout, Sidebar components
+│   │   └── ui/         # Reusable UI components
+│   ├── context/        # React context providers (Auth, Theme)
+│   ├── lib/            # Library utilities (db.ts)
 │   ├── pages/          # Page components
-│   ├── store/          # Zustand store
-│   ├── types/          # TypeScript types
-│   └── utils/          # Utility functions
+│   ├── store/          # Zustand state store
+│   └── types/          # TypeScript types
 ├── dist/                # Production build output
 ├── public/             # Static assets
+├── .env.example        # Environment variables template
 ├── .gitignore         # Git ignore rules
-├── .env               # Environment variables
 ├── eslint.config.js   # ESLint configuration
 ├── package.json       # Project dependencies
 ├── postcss.config.js  # PostCSS configuration
 ├── tailwind.config.js # Tailwind CSS configuration
 ├── tsconfig.json     # TypeScript configuration
 ├── vite.config.ts    # Vite configuration
-└── start.sh          # Startup script
+├── start.sh          # Startup script
+├── nginx.conf        # Nginx configuration
+└── README.md         # This file
 ```
 
-## API Endpoints
+## Database Schema
 
-### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/auth/register | Create new account |
-| POST | /api/auth/login | Login and set session cookie |
-| POST | /api/auth/logout | Clear session cookie |
-| GET | /api/auth/me | Get current user |
+The app uses InstantDB with the following entities:
 
-### Boards
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/boards | Get all user boards |
-| POST | /api/boards | Create new board |
-| GET | /api/boards/:id | Get specific board |
-| PUT | /api/boards/:id | Update board |
-| DELETE | /api/boards/:id | Delete board |
-| PUT | /api/boards/:id/share | Share board (body: { userId, permission }) |
-| PUT | /api/boards/:id/share/:userId/permission | Update permission |
-| DELETE | /api/boards/:id/share/:userId | Unshare board |
-| PUT | /api/boards/:id/columns/:columnId/share | Share column |
-| PUT | /api/boards/:id/columns/:columnId/share/:userId/permission | Update column permission |
-| DELETE | /api/boards/:id/columns/:columnId/share/:userId | Unshare column |
-| PUT | /api/boards/:id/columns/:columnId/cards/:cardId/share | Share card |
-| PUT | /api/boards/:id/columns/:columnId/cards/:cardId/share/:userId/permission | Update card permission |
-| DELETE | /api/boards/:id/columns/:columnId/cards/:cardId/share/:userId | Unshare card |
+- **$users** - System authentication users
+- **users** - User profiles (username, email)
+- **boards** - Kanban boards with sharing
+- **columns** - Board columns with ordering
+- **cards** - Task cards with labels, priority, due dates
+- **labels** - User-scoped labels
 
-### Users
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/users | Get all users (for sharing) |
-
-### Labels
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/labels | Get all labels |
-| POST | /api/labels | Create new label |
-| PUT | /api/labels/:id | Update label |
-| DELETE | /api/labels/:id | Delete label |
-
-## Default Labels
-
-| Name | Color |
-|------|-------|
-| Bug | #ef4444 (red) |
-| Feature | #22c55e (green) |
-| Idea | #3b82f6 (blue) |
-| Todo | #f59e0b (amber) |
-| Important | #ec4899 (pink) |
-
-## Keyboard Shortcuts
-
-- **Double-click** on empty space in a column to add a card
-
-## Environment Variables
-
-```env
-# Server port (default: 3001)
-PORT=3001
-
-# JWT secret for session tokens (change in production)
-JWT_SECRET=your-secret-key-here
-
-# Node environment
-NODE_ENV=development
-```
+See `SCHEMA_STRUCTURE.md` for detailed schema documentation.
 
 ## Sharing Permissions
 
@@ -197,6 +127,15 @@ NODE_ENV=development
 - Delete boards, columns, or cards
 - Share/unshare items
 - Change permission levels
+
+## Environment Variables
+
+```env
+# InstantDB App ID (required)
+VITE_INSTANT_APP_ID=your_app_id_here
+```
+
+Get your App ID from: https://instantdb.com/dash
 
 ## License
 

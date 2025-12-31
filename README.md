@@ -1,6 +1,6 @@
 # TaskPlanner
 
-A production-ready Kanban-style task management application with a distinctive neo-brutalist design.
+A production-ready Kanban-style multi-user task management application with a simple to use design.
 
 ## Features
 

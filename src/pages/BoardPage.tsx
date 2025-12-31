@@ -79,7 +79,7 @@ export function BoardPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <p className="text-danger mb-4">{error}</p>
+          <p className="text-danger mb-4">{error instanceof Error ? error.message : String(error)}</p>
           <Button onClick={() => window.location.reload()}>
             Retry
           </Button>

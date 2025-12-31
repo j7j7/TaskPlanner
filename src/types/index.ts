@@ -17,6 +17,7 @@ export interface Label {
   name: string;
   color: string;
   userId: string;
+  createdAt: string;
 }
 
 export interface Card {

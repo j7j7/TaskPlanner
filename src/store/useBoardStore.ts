@@ -66,23 +66,31 @@ function toISOTimestamp(value: number | string | undefined): string {
   return new Date(value).toISOString();
 }
 
-function convertTimestamp<T extends Record<string, unknown>>(obj: T): T {
+function convertTimestamp<T extends object>(obj: T): T & { createdAt: string; updatedAt: string } {
+  const typed = obj as Record<string, unknown>;
   return {
     ...obj,
-    createdAt: toISOTimestamp(obj.createdAt as number | string | undefined),
-    updatedAt: toISOTimestamp(obj.updatedAt as number | string | undefined),
-  };
+    createdAt: toISOTimestamp(typed.createdAt as number | string | undefined),
+    updatedAt: toISOTimestamp(typed.updatedAt as number | string | undefined),
+  } as T & { createdAt: string; updatedAt: string };
 }
 
 function convertBoardTimestamps(board: Board): Board {
-  // Ensure columns is always an array
   const columns = Array.isArray(board.columns) ? board.columns : [];
   
   return {
-    ...convertTimestamp(board),
+    ...board,
+    createdAt: toISOTimestamp(board.createdAt),
+    updatedAt: toISOTimestamp(board.updatedAt),
     columns: columns.map((col) => ({
-      ...convertTimestamp(col),
-      cards: (col.cards || []).map((card) => convertTimestamp(card)),
+      ...col,
+      createdAt: toISOTimestamp(col.createdAt),
+      updatedAt: toISOTimestamp(col.updatedAt),
+      cards: (col.cards || []).map((card) => ({
+        ...card,
+        createdAt: toISOTimestamp(card.createdAt),
+        updatedAt: toISOTimestamp(card.updatedAt),
+      })),
     })),
   };
 }
@@ -132,11 +140,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   updateBoard: async (boardId: string, data: Partial<Board>) => {
     try {
+      const { createdAt, ...updateData } = data;
       await db.transact([
         db.tx.boards[boardId].update({
-          ...data,
+          ...updateData,
           updatedAt: now(),
-        }),
+        } as Record<string, unknown>),
       ]);
     } catch (error) {
       set({ error: 'Failed to update board' });
@@ -186,7 +195,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           createdAt: timestamp,
           updatedAt: timestamp,
           sharedWith: [],
-        }),
+        } as Record<string, unknown>),
       ];
 
       if (columns && columns.length > 0) {
@@ -203,7 +212,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
               sharedWith: [],
               createdAt: timestamp,
               updatedAt: timestamp,
-            })
+            } as Record<string, unknown>)
           );
 
           if (column.cards && column.cards.length > 0) {
@@ -226,7 +235,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
                   sharedWith: [],
                   createdAt: timestamp,
                   updatedAt: timestamp,
-                })
+                } as Record<string, unknown>)
               );
             });
           }
@@ -286,7 +295,6 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
       await db.transact([
         db.tx.columns[columnId].update({
-          id: columnId,
           boardId: currentBoard.id,
           title,
           color,
@@ -295,10 +303,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           sharedWith: [],
           createdAt: now(),
           updatedAt: now(),
-        }),
+        } as Record<string, unknown>),
         db.tx.boards[currentBoard.id].update({
           updatedAt: now(),
-        }),
+        } as Record<string, unknown>),
       ]);
     } catch (error) {
       console.error('createColumn: Error creating column', error);
@@ -377,7 +385,6 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
       await db.transact([
         db.tx.cards[cardId].update({
-          id: cardId,
           columnId,
           boardId: currentBoard.id,
           title,
@@ -388,8 +395,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           sharedWith: [],
           createdAt: now(),
           updatedAt: now(),
-        }),
-        db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
+        } as Record<string, unknown>),
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() } as Record<string, unknown>),
       ]);
     } catch (error) {
       console.error('createCard: Error creating card', error);
@@ -465,7 +472,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         // Update order for all cards in the column
         cards.forEach((card, index) => {
           transactions.push(
-            db.tx.cards[card.id].update({ order: index, updatedAt: now() })
+            db.tx.cards[card.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
           );
         });
       } else {
@@ -484,14 +491,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
             boardId: toColumnBoardId, // Ensure boardId matches the board
             order: newIndex, 
             updatedAt: now() 
-          })
+          } as Record<string, unknown>)
         );
         
         // Update orders for remaining cards in source column
         const remainingFromCards = fromCards.filter((c) => c.id !== cardId);
         remainingFromCards.forEach((card, index) => {
           transactions.push(
-            db.tx.cards[card.id].update({ order: index, updatedAt: now() })
+            db.tx.cards[card.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
           );
         });
         
@@ -499,14 +506,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         toCards.forEach((card, index) => {
           if (card.id !== cardId) {
             transactions.push(
-              db.tx.cards[card.id].update({ order: index, updatedAt: now() })
+              db.tx.cards[card.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
             );
           }
         });
       }
 
       transactions.push(
-        db.tx.boards[currentBoard.id].update({ updatedAt: now() })
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() } as Record<string, unknown>)
       );
 
       await db.transact(transactions);
@@ -533,12 +540,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       columns.splice(newIndex, 0, movedColumn);
 
       // Update order for all columns
-      const transactions = columns.map((col, index) =>
-        db.tx.columns[col.id].update({ order: index, updatedAt: now() })
+      const transactions: Parameters<typeof db.transact>[0] = columns.map((col, index) =>
+        db.tx.columns[col.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
       );
 
       transactions.push(
-        db.tx.boards[currentBoard.id].update({ updatedAt: now() })
+        db.tx.boards[currentBoard.id].update({ updatedAt: now() } as Record<string, unknown>)
       );
 
       await db.transact(transactions);
@@ -572,7 +579,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   updateLabel: async (labelId: string, data: Partial<Label>) => {
     try {
-      await db.transact([db.tx.labels[labelId].update(data)]);
+      await db.transact([db.tx.labels[labelId].update(data as Record<string, unknown>)]);
     } catch (error) {
       console.error('updateLabel: Error updating label', error);
       set({ error: `Failed to update label: ${error instanceof Error ? error.message : 'Unknown error'}` });
@@ -854,22 +861,20 @@ export function useBoards() {
   const rawColumns = (columnsResult as { columns?: unknown[] })?.columns || [];
   const rawCards = (cardsResult as { cards?: unknown[] })?.cards || [];
   
-  // Convert timestamps
-  const allBoards = rawBoards.map((b: unknown) => convertTimestamp(b as Board));
-  const allColumns = rawColumns.map((c: unknown) => convertTimestamp(c as Column));
-  const allCards = rawCards.map((c: unknown) => convertTimestamp(c as Card));
+  const allBoards = rawBoards.map((b) => convertTimestamp(b as Board));
+  const allColumns = rawColumns.map((c) => convertTimestamp(c as Column));
+  const allCards = rawCards.map((c) => convertTimestamp(c as Card));
   
-  // Join columns and cards into boards
   const boardsWithData = allBoards.map((board) => {
     const boardColumns = allColumns
       .filter((col) => col.boardId === board.id)
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => (a as Column).order - (b as Column).order)
       .map((col) => ({
         ...col,
         cards: allCards
           .filter((card) => card.columnId === col.id)
-          .sort((a, b) => a.order - b.order)
-          .map((card) => convertTimestamp(card)),
+          .sort((a, b) => (a as Card).order - (b as Card).order)
+          .map((card) => card),
       }));
     
     return {
@@ -924,11 +929,11 @@ export function useBoard(boardId: string) {
     .filter((col) => col.boardId === boardId)
     .sort((a, b) => a.order - b.order)
     .map((col) => ({
-      ...convertTimestamp(col),
+      ...col,
       cards: allCards
         .filter((card) => card.columnId === col.id)
         .sort((a, b) => a.order - b.order)
-        .map((card) => convertTimestamp(card)),
+        .map((card) => card),
     }));
   
   const boardWithData = {
@@ -951,11 +956,14 @@ export function useLabels() {
   const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
   const error = (queryResult as { error?: Error })?.error;
 
-  const rawLabels = (result as { labels?: Label[] })?.labels || [];
-  const allLabels = rawLabels.map((l) => ({
-    ...l,
-    createdAt: toISOTimestamp(l.createdAt),
-  }));
+  const rawLabels = (result as { labels?: unknown[] })?.labels || [];
+  const allLabels: Label[] = rawLabels.map((l) => {
+    const label = l as Label;
+    return {
+      ...label,
+      createdAt: toISOTimestamp(label.createdAt),
+    };
+  });
   
   // Filter labels by current user (only show labels owned by current user)
   const labels = currentUser

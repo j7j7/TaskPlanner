@@ -80,7 +80,7 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
     return isCardOwner ? `${u.username} (Owner)` : u.username;
   };
 
-  const handleShare = async (userId: string, permission?: 'read' | 'write') => {
+  const handleShare = async (userId: string, permission: 'read' | 'write' = 'read') => {
     if (currentBoard) {
       const column = currentBoard.columns.find(col => col.cards.some(c => c.id === card.id));
       if (column) {

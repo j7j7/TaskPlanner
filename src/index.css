@@ -12,8 +12,8 @@
   --color-border: #333333;
   --color-text: #ffffff;
   --color-textMuted: #888888;
-  --color-accent: #ccff00;
-  --color-accentHover: #b3e600;
+  --color-accent: #d6532c;
+  --color-accentHover: #c04a26;
   --color-primary: #0066ff;
   --color-primaryHover: #0052cc;
   --color-danger: #ef4444;
@@ -65,8 +65,8 @@
   --color-border: #d0d0d0;
   --color-text: #0a0a0a;
   --color-textMuted: #666666;
-  --color-accent: #ccff00;
-  --color-accentHover: #b3e600;
+  --color-accent: #d6532c;
+  --color-accentHover: #c04a26;
   --color-primary: #0066ff;
   --color-primaryHover: #0052cc;
   --color-danger: #ef4444;
@@ -83,8 +83,8 @@
   --color-border: #333333;
   --color-text: #ffffff;
   --color-textMuted: #888888;
-  --color-accent: #ccff00;
-  --color-accentHover: #b3e600;
+  --color-accent: #d6532c;
+  --color-accentHover: #c04a26;
   --color-primary: #0066ff;
   --color-primaryHover: #0052cc;
   --color-danger: #ef4444;
@@ -260,7 +260,12 @@
   }
 
   .sidebar-item.active {
-    @apply bg-accent/30 text-gray-800 border border-accent/50;
+    @apply bg-accent/30 border border-accent/50;
+    color: #0a0a0a;
+  }
+
+  .dark .sidebar-item.active {
+    color: #ffffff;
   }
 }
 

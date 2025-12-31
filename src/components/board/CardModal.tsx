@@ -341,11 +341,11 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                           />
                           ))}
                         </div>
-                        <button
-                          type="button"
-                          onClick={handleSaveEditLabel}
-                          className="text-xs px-1.5 py-0.5 bg-accent text-background rounded hover:opacity-90"
-                        >
+                          <button
+                            type="button"
+                            onClick={handleSaveEditLabel}
+                            className="text-xs px-1.5 py-0.5 bg-accent text-gray-800 rounded hover:opacity-90"
+                          >
                           ✓
                         </button>
                         <button

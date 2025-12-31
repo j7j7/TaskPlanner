@@ -121,7 +121,7 @@ export function IconPicker({ isOpen, onClose, onSelect, currentIcon }: IconPicke
               onClick={() => setSelectedCategory(category.name)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
                 selectedCategory === category.name
-                  ? 'bg-accent text-background'
+                  ? 'bg-accent text-gray-800'
                   : 'bg-surfaceLight text-textMuted hover:bg-border'
               }`}
             >

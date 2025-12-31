@@ -119,7 +119,7 @@ export function BoardPage() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setIsAddColumnModalOpen(true)}
-              className="p-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
+              className="p-2 rounded-lg bg-accent text-gray-800 hover:bg-accent/90 transition-colors"
               data-tooltip="Add Column"
             >
               <svg className="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">

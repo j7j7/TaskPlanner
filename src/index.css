@@ -65,8 +65,8 @@
   --color-border: #d0d0d0;
   --color-text: #0a0a0a;
   --color-textMuted: #666666;
-  --color-accent: #0066ff;
-  --color-accentHover: #0052cc;
+  --color-accent: #ccff00;
+  --color-accentHover: #b3e600;
   --color-primary: #0066ff;
   --color-primaryHover: #0052cc;
   --color-danger: #ef4444;
@@ -131,7 +131,7 @@
   }
 
   .light ::selection {
-    @apply bg-primary text-background;
+    @apply bg-accent text-background;
   }
 
   ::-webkit-scrollbar {
@@ -159,7 +159,7 @@
   }
 
   .btn-primary {
-    @apply bg-accent text-background border-accent hover:bg-accentHover hover:shadow-hard-hover active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+    @apply bg-accent text-gray-800 border-accent hover:bg-accentHover hover:shadow-hard-hover active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
   }
 
   .btn-secondary {
@@ -260,7 +260,7 @@
   }
 
   .sidebar-item.active {
-    @apply bg-accent/10 text-accent border border-accent/30;
+    @apply bg-accent/30 text-gray-800 border border-accent/50;
   }
 }
 

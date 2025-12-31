@@ -219,7 +219,7 @@ export function Sidebar() {
             className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity"
             data-tooltip="Expand sidebar"
           >
-            <svg className="w-5 h-5 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             </svg>
           </button>
@@ -288,7 +288,7 @@ export function Sidebar() {
       <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
-            <span className="text-background font-display font-bold text-xl">T</span>
+            <span className="text-gray-800 font-display font-bold text-xl">T</span>
           </div>
           <div>
             <h1 className="font-display font-bold text-xl text-text">TaskPlanner</h1>

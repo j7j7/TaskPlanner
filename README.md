@@ -42,6 +42,13 @@ A production-ready Kanban-style multi-user task management application with a si
 npm install
 ```
 
+Or use the provided startup script which installs dependencies automatically:
+
+```bash
+chmod +x start.sh
+./start.sh
+```
+
 ### Configuration
 
 Create a `.env` file with your InstantDB App ID:
@@ -56,6 +63,12 @@ cp .env.example .env
 ```bash
 # Start development server
 npm run dev
+```
+
+Or use the startup script which will install dependencies, build, and start the dev server:
+
+```bash
+./start.sh
 ```
 
 The application will be available at: http://localhost:5173

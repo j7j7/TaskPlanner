@@ -429,15 +429,6 @@ export function Sidebar() {
               </>
             )}
           </button>
-          <button
-            onClick={handleLogout}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all font-display"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Sign Out
-          </button>
         </div>
       </div>
 
@@ -540,20 +531,29 @@ export function Sidebar() {
             placeholder="Enter your username"
             required
           />
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-between gap-2">
             <Button
-              variant="ghost"
+              variant="danger"
               type="button"
-              onClick={() => {
-                setIsUserEditModalOpen(false);
-                setEditingUsername('');
-              }}
+              onClick={handleLogout}
             >
-              Cancel
+              Sign Out
             </Button>
-            <Button type="submit" loading={isUpdatingUsername}>
-              Save
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => {
+                  setIsUserEditModalOpen(false);
+                  setEditingUsername('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={isUpdatingUsername}>
+                Save
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

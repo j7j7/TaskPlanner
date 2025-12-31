@@ -154,7 +154,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 font-medium text-sm transition-all duration-200 border-2 border-transparent cursor-pointer;
+    @apply inline-flex items-center justify-center px-4 py-2 font-medium text-sm transition-all duration-200 border-2 border-transparent cursor-pointer rounded-lg;
     font-family: var(--font-body);
   }
 

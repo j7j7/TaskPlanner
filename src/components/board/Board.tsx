@@ -5,7 +5,7 @@ import { Column } from './Column';
 import type { Card as CardType } from '../../types';
 import { useBoardStore } from '../../store/useBoardStore';
 
-export function Board({ isRotated = false }: { isRotated?: boolean }) {
+export function Board({ isRotated = false, onAddColumn }: { isRotated?: boolean; onAddColumn?: () => void }) {
   const { currentBoard, moveCard, moveColumn } = useBoardStore();
   const [activeCard, setActiveCard] = useState<CardType | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
@@ -160,6 +160,17 @@ export function Board({ isRotated = false }: { isRotated?: boolean }) {
           {columns.map((column) => (
             <Column key={column.id} column={column} dragOverId={overId} activeCardId={activeCard?.id || null} isRotated={isRotated} />
           ))}
+          {columns.length === 0 && onAddColumn && (
+            <button
+              onClick={onAddColumn}
+              className="shrink-0 w-72 h-32 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-textMuted hover:text-text hover:border-accent hover:bg-surfaceLight/50 transition-all cursor-pointer"
+            >
+              <svg className="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="font-display font-medium">Add Column</span>
+            </button>
+          )}
         </SortableContext>
       </div>
 

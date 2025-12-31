@@ -307,6 +307,17 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                   </div>
                 );
               })}
+              {column.cards.length === 0 && canWrite && (
+                <button
+                  onClick={() => setIsAddingCard(true)}
+                  className="py-4 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center text-textMuted hover:text-text hover:border-accent hover:bg-surfaceLight/50 transition-all cursor-pointer"
+                >
+                  <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-sm font-display">Add Card</span>
+                </button>
+              )}
             </div>
           </SortableContext>
 

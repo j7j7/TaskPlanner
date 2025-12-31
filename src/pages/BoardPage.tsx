@@ -139,9 +139,9 @@ export function BoardPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto p-3 sm:p-6">
+      <div className="flex-1 overflow-auto p-2 sm:p-4">
         {board ? (
-          <Board isRotated={isRotated} />
+          <Board isRotated={isRotated} onAddColumn={() => setIsAddColumnModalOpen(true)} />
         ) : isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-4">

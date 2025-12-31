@@ -29,7 +29,7 @@ function hasBoardWriteAccess(board: Board, userId: string | undefined): boolean 
 export function Sidebar() {
   const { user, logout, updateUsername } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { currentBoard, createBoard, updateBoard, deleteBoard, shareBoard } = useBoardStore();
+  const { currentBoard, createBoard, importBoard, updateBoard, deleteBoard, shareBoard } = useBoardStore();
   const { boards } = useBoards();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -169,8 +169,13 @@ export function Sidebar() {
         return;
       }
 
+      let importedCount = 0;
       for (const board of data.boards) {
-        await createBoard(board.title);
+        await importBoard(
+          { title: board.title, id: board.id },
+          board.columns || []
+        );
+        importedCount++;
       }
 
       setIsImportModalOpen(false);
@@ -178,8 +183,9 @@ export function Sidebar() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    } catch {
-      setImportError('Failed to parse file. Please ensure it is a valid JSON file.');
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportError('Failed to import file. Please ensure it is a valid JSON file.');
     }
   };
 

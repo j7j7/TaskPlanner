@@ -16,6 +16,7 @@ interface BoardState {
 
   // Board actions
   createBoard: (title: string) => Promise<Board | null>;
+  importBoard: (boardData: Partial<Board>, columns?: Column[]) => Promise<Board | null>;
   updateBoard: (boardId: string, data: Partial<Board>) => Promise<void>;
   deleteBoard: (boardId: string) => Promise<void>;
 
@@ -163,6 +164,108 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: 'Failed to delete board' });
+    }
+  },
+
+  importBoard: async (boardData: Partial<Board>, columns?: Column[]) => {
+    const { currentUser } = get();
+    if (!currentUser) {
+      console.error('No current user when importing board');
+      return null;
+    }
+
+    try {
+      const newBoardId = boardData.id || id();
+      const timestamp = now();
+
+      const transactions: Parameters<typeof db.transact>[0] = [
+        db.tx.boards[newBoardId].update({
+          id: newBoardId,
+          title: boardData.title || 'Imported Board',
+          userId: currentUser.id,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          sharedWith: [],
+        }),
+      ];
+
+      if (columns && columns.length > 0) {
+        columns.forEach((column) => {
+          const newColumnId = column.id || id();
+          transactions.push(
+            db.tx.columns[newColumnId].update({
+              id: newColumnId,
+              boardId: newBoardId,
+              title: column.title,
+              color: column.color || '#3b82f6',
+              order: column.order || 0,
+              userId: currentUser.id,
+              sharedWith: [],
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            })
+          );
+
+          if (column.cards && column.cards.length > 0) {
+            column.cards.forEach((card) => {
+              const newCardId = card.id || id();
+              transactions.push(
+                db.tx.cards[newCardId].update({
+                  id: newCardId,
+                  columnId: newColumnId,
+                  boardId: newBoardId,
+                  title: card.title,
+                  description: card.description || '',
+                  labels: card.labels || [],
+                  priority: card.priority || 'medium',
+                  dueDate: card.dueDate,
+                  assignee: card.assignee,
+                  icon: card.icon,
+                  order: card.order || 0,
+                  userId: currentUser.id,
+                  sharedWith: [],
+                  createdAt: timestamp,
+                  updatedAt: timestamp,
+                })
+              );
+            });
+          }
+        });
+      }
+
+      await db.transact(transactions);
+
+      return {
+        id: newBoardId,
+        title: boardData.title || 'Imported Board',
+        userId: currentUser.id,
+        createdAt: toISOTimestamp(timestamp),
+        updatedAt: toISOTimestamp(timestamp),
+        sharedWith: [],
+        columns: (columns || []).map((col) => ({
+          ...col,
+          id: col.id || id(),
+          boardId: newBoardId,
+          userId: currentUser.id,
+          sharedWith: [],
+          createdAt: toISOTimestamp(timestamp),
+          updatedAt: toISOTimestamp(timestamp),
+          cards: (col.cards || []).map((card) => ({
+            ...card,
+            id: card.id || id(),
+            columnId: col.id || id(),
+            boardId: newBoardId,
+            userId: currentUser.id,
+            sharedWith: [],
+            createdAt: toISOTimestamp(timestamp),
+            updatedAt: toISOTimestamp(timestamp),
+          })),
+        })),
+      } as Board;
+    } catch (error) {
+      console.error('Failed to import board:', error);
+      set({ error: 'Failed to import board' });
+      return null;
     }
   },
 

@@ -28,7 +28,7 @@ This guide covers how to install TaskPlanner locally and host it on your own inf
 ### 1.3 Get Your App ID
 
 1. In your app dashboard, look for **"App ID"** or navigate to Settings
-2. Copy the App ID - it looks like: `2f38c7f1-228e-4767-85d1-f96a6cbb5cb5`
+2. Copy the App ID - it looks like: `2f38c7f1-228e-4767-85d1-xxxxxxx`
 3. This is your unique identifier for database connections
 
 ### 1.4 Configure Email Auth (Optional)
@@ -73,14 +73,14 @@ Open `.env` in your editor and update the InstantDB App ID:
 # Get your APP_ID from https://instantdb.com/dash?t=explorer
 
 # Your InstantDB App ID (must start with VITE_ for Vite to expose it)
-VITE_INSTANT_APP_ID=2f38c7f1-228e-4767-85d1-f96a6cbb5cb5
+VITE_INSTANT_APP_ID=2f38c7f1-228e-4767-85d1-xxxxxx
 
 # Node environment
 NODE_ENV=development
 ```
 
 **Important:**
-- Replace `2f38c7f1-228e-4767-85d1-f96a6cbb5cb5` with your actual App ID
+- Replace `2f38c7f1-228e-4767-85d1-xxxxxxxx` with your actual App ID
 - The `VITE_` prefix is required - Vite only exposes variables starting with this prefix
 - Never share your App ID publicly
 

@@ -1,7 +1,7 @@
 # Project Tree Structure
 
 ```
-todo/
+TaskPlanner/
 ├── .git/                     # Git version control
 ├── .gitattributes           # Git attributes
 ├── .gitignore               # Git ignore rules

@@ -43,8 +43,8 @@ This guide covers how to install TaskPlanner locally and host it on your own inf
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/todo.git
-cd todo
+git clone https://github.com/yourusername/TaskPlanner.git
+cd TaskPlanner
 
 # Install dependencies
 npm install

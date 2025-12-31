@@ -15,8 +15,8 @@ let activeTooltip: HTMLElement | null = null
 let tooltipTimeout: ReturnType<typeof setTimeout> | null = null
 
 document.addEventListener('mouseenter', (e) => {
-  const target = e.target as HTMLElement
-  if (!target.hasAttribute('data-tooltip')) return
+  const target = e.target
+  if (!(target instanceof Element) || !target.hasAttribute('data-tooltip')) return
 
   const text = target.getAttribute('data-tooltip')
   if (!text) return
@@ -70,8 +70,8 @@ document.addEventListener('mouseenter', (e) => {
 }, true)
 
 document.addEventListener('mouseleave', (e) => {
-  const target = e.target as HTMLElement
-  if (!target.hasAttribute('data-tooltip')) return
+  const target = e.target
+  if (!(target instanceof Element) || !target.hasAttribute('data-tooltip')) return
 
   if (tooltipTimeout) {
     clearTimeout(tooltipTimeout)

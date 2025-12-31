@@ -190,7 +190,7 @@ export function Sidebar() {
   if (isCollapsed) {
     return (
       <aside className="w-16 bg-surface border-r border-border flex flex-col h-screen shrink-0">
-        <div className="p-3 border-b border-border flex justify-center">
+        <div className="p-3 flex justify-center">
           <button
             onClick={() => setIsCollapsed(false)}
             className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity"
@@ -262,7 +262,7 @@ export function Sidebar() {
 
   return (
     <aside className="w-56 md:w-64 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-all duration-300">
-      <div className="p-6 border-b border-border flex items-center justify-between">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
             <span className="text-background font-display font-bold text-xl">T</span>
@@ -407,7 +407,7 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all font-display"
@@ -429,17 +429,16 @@ export function Sidebar() {
               </>
             )}
           </button>
+          <button
+            onClick={handleLogout}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all font-display"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign Out
+          </button>
         </div>
-
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-textMuted hover:text-text hover:bg-surfaceLight rounded-lg transition-all font-display"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          Sign Out
-        </button>
       </div>
 
       <Modal

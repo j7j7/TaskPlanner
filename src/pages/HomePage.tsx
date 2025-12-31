@@ -6,16 +6,11 @@ import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 
-console.log('HomePage module loaded');
-
 export function HomePage() {
   try {
-    console.log('HomePage function called');
     const { user } = useAuth();
     const { createBoard } = useBoardStore();
     const { boards, isLoading } = useBoards();
-    
-    console.log('HomePage - boards:', boards?.length, 'isLoading:', isLoading);
     
     const navigate = useNavigate();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

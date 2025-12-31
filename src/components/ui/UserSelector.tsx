@@ -43,13 +43,7 @@ export function UserSelector({
     }
   }, [isOpen, fetchUsers, initialSelectedUsers]);
   
-  // Debug: log users when they change
-  useEffect(() => {
-    if (isOpen) {
-      console.log('UserSelector - users in store:', users.length, users);
-    }
-  }, [isOpen, users]);
-
+  // Filter users based on search and share status
   const filteredUsers = users.filter((u) => {
     // Filter out current user
     if (u.id === user?.id) return false;

@@ -30,15 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (initialized) return;
     setInitialized(true);
 
-    console.log('Checking localStorage for stored user...');
     try {
       const stored = localStorage.getItem(AUTH_KEY);
       if (stored) {
         const parsedUser = JSON.parse(stored);
-        console.log('Found stored user:', parsedUser.id);
         setUser(parsedUser);
-      } else {
-        console.log('No stored user found');
       }
     } catch (err) {
       console.error('Failed to load stored user:', err);
@@ -47,13 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [initialized]);
 
   useEffect(() => {
-    console.log('User effect - user:', user?.id);
     if (user) {
       localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-      console.log('User saved to localStorage');
     } else if (initialized) {
       localStorage.removeItem(AUTH_KEY);
-      console.log('User removed from localStorage');
     }
   }, [user, initialized]);
 
@@ -76,16 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      console.log('Verifying magic code for:', email);
       const { user: authUser } = await db.auth.signInWithMagicCode({ email, code });
-      console.log('Auth response:', authUser);
       if (authUser) {
         const newUser: User = {
           id: authUser.id,
           username: authUser.email || authUser.id,
           createdAt: new Date().toISOString(),
         };
-        console.log('Setting user:', newUser.id);
         setUser(newUser);
         
         // Create or update user profile in the users entity
@@ -99,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               updatedAt: timestamp,
             }),
           ]);
-          console.log('User profile created/updated in users entity');
         } catch (profileError) {
           console.error('Failed to create/update user profile:', profileError);
           // Don't fail the login if profile creation fails

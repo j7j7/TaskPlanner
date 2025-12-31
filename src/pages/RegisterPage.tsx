@@ -17,12 +17,12 @@ export function RegisterPage() {
 
   const handleSendCode = () => {
     setFormError('');
-    console.log('Submitting email:', email);
     if (email) {
-      sendMagicCode(email).catch(e => console.log('Magic code send failed:', e));
+      sendMagicCode(email).catch(e => {
+        console.error('Magic code send failed:', e);
+      });
     }
     setSearchParams({ step: 'code', email }, { replace: true });
-    console.log('URL updated to step=code');
   };
 
   const handleVerifyCode = () => {

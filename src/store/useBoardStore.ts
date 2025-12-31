@@ -96,13 +96,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   error: null,
 
   setCurrentUser: (user: User | null) => {
-    console.log('setCurrentUser called with:', user?.id);
     set({ currentUser: user });
   },
 
   createBoard: async (title: string) => {
     const { currentUser } = get();
-    console.log('createBoard - currentUser:', currentUser);
     if (!currentUser) {
       console.error('No current user when creating board');
       return null;
@@ -118,13 +116,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         updatedAt: now(),
         sharedWith: [],
       };
-      console.log('Creating board with data:', boardData);
 
       await db.transact([
         db.tx.boards[newBoardId].update(boardData),
       ]);
 
-      console.log('Board created successfully');
       return convertBoardTimestamps({ ...boardData, columns: [] } as unknown as Board);
     } catch (error) {
       console.error('Failed to create board:', error);

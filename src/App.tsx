@@ -38,8 +38,6 @@ function UsersSync() {
   }, [user, users]);
 
   useEffect(() => {
-    console.log('UsersSync - users:', users.length, users);
-    console.log('UsersSync - isLoading:', isLoading, 'error:', error);
     // Always set users, even if empty (to clear store)
     setUsers(users);
   }, [users, setUsers, isLoading, error]);
@@ -52,9 +50,7 @@ function AppRoutes() {
   const setCurrentUser = useBoardStore((state) => state.setCurrentUser);
 
   useEffect(() => {
-    console.log('AppRoutes - user changed:', user?.id);
     if (user) {
-      console.log('Setting currentUser to:', user.id);
       setCurrentUser(user);
     } else {
       setCurrentUser(null);

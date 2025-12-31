@@ -1,42 +1,12 @@
 # Project Tree Structure
 
 ```
-taskplanner/
+todo/
 ├── .git/                     # Git version control
-│   ├── branches/            # Git branches
-│   ├── hooks/               # Git hooks
-│   ├── logs/                # Git logs
-│   └── objects/             # Git objects
 ├── .gitattributes           # Git attributes
 ├── .gitignore               # Git ignore rules
-├── data/                    # Application data storage (JSON files)
-│   ├── boards.json         # Board data (columns, cards)
-│   ├── labels.json         # Label definitions
-│   ├── sessions.json       # User sessions
-│   └── users.json          # User accounts
-├── dist/                    # Production build output
-│   ├── index.html          # Compiled HTML
-│   ├── vite.svg            # Favicon
-│   └── assets/             # Compiled assets
-│       ├── index-*.css     # Compiled CSS
-│       └── index-*.js      # Compiled JavaScript
-├── eslint.config.js         # ESLint configuration
-├── index.html               # Main HTML entry point
-├── package.json             # Project dependencies & scripts
-├── package-lock.json        # Locked dependency versions
-├── postcss.config.js        # PostCSS configuration
 ├── public/                  # Static public assets
-│   └── vite.svg            # Default favicon
-├── README.md               # Project documentation
-├── server/                 # Backend (Express.js)
-│   ├── auth.js            # Authentication logic
-│   ├── index.js           # Server entry point
-│   ├── store.js           # JSON file read/write operations
-│   └── routes/            # API route handlers
-│       ├── auth.js        # /api/auth endpoints
-│       ├── boards.js      # /api/boards endpoints (sharing, permissions)
-│       ├── labels.js      # /api/labels endpoints
-│       └── users.js       # /api/users endpoint
+│   └── vite.svg            # Favicon
 ├── src/                    # Frontend (React + TypeScript)
 │   ├── App.css            # App styles
 │   ├── App.tsx            # Main App component
@@ -45,8 +15,6 @@ taskplanner/
 │   ├── assets/            # Static assets
 │   │   └── react.svg     # React logo
 │   ├── components/        # React components
-│   │   ├── auth/         # Authentication components
-│   │   │   └── ProtectedRoute.tsx
 │   │   ├── board/        # Board components
 │   │   │   ├── Board.tsx        # Main board container with DndContext
 │   │   │   ├── Card.tsx         # Draggable card with sharing UI
@@ -57,11 +25,15 @@ taskplanner/
 │   │   │   └── Sidebar.tsx      # Sidebar with board list and sharing
 │   │   └── ui/           # Reusable UI components
 │   │       ├── Button.tsx       # Button component
+│   │       ├── IconPicker.tsx   # Icon picker component
 │   │       ├── Input.tsx        # Input component
 │   │       ├── Modal.tsx        # Modal dialog
 │   │       └── UserSelector.tsx # Share modal with permission dropdown
-│   ├── hooks/            # Custom React hooks
-│   │   └── useAuth.ts    # Authentication hook
+│   ├── context/           # React context providers
+│   │   ├── AuthContext.tsx      # Authentication context
+│   │   └── ThemeContext.tsx     # Theme context
+│   ├── lib/              # Library utilities
+│   │   └── db.ts         # Database operations
 │   ├── pages/            # Page components
 │   │   ├── BoardPage.tsx     # Individual board view with owner indicator
 │   │   ├── HomePage.tsx      # Dashboard with boards
@@ -69,18 +41,30 @@ taskplanner/
 │   │   └── RegisterPage.tsx  # Registration form
 │   ├── store/            # State management
 │   │   └── useBoardStore.ts  # Zustand store (share actions, permissions)
-│   ├── styles/           # Additional styles
-│   ├── types/            # TypeScript types
-│   │   └── index.ts      # Type definitions (SharedUser, SharePermission)
-│   └── utils/            # Utility functions
-│       └── api.ts        # API client (share with permission support)
-├── start.sh               # Startup script (runs both servers)
-├── tailwind.config.js     # Tailwind CSS configuration
+│   └── types/            # TypeScript types
+│       └── index.ts      # Type definitions (SharedUser, SharePermission)
+├── .env.example          # Environment variables template
+├── DEPLOY_COMMANDS.md    # Deployment commands documentation
+├── deploy-to-server.sh   # Server deployment script
+├── deploy.sh             # Deployment script
+├── docs.md               # Additional documentation
+├── eslint.config.js      # ESLint configuration
+├── index.html            # Main HTML entry point
+├── INSTALL.md            # Installation instructions
+├── nginx.conf            # Nginx configuration
+├── package.json          # Project dependencies & scripts
+├── package-lock.json     # Locked dependency versions
+├── postcss.config.js     # PostCSS configuration
+├── PRODUCTION_DEPLOYMENT.md  # Production deployment guide
+├── README.md             # Project documentation
+├── SCHEMA_STRUCTURE.md   # Database schema documentation
+├── start.sh              # Startup script
+├── tailwind.config.js    # Tailwind CSS configuration
 ├── tree.md               # This file
 ├── tsconfig.app.json     # TypeScript config for app
-├── tsconfig.json        # Root TypeScript config
-├── tsconfig.node.json   # TypeScript config for Node
-└── vite.config.ts       # Vite configuration
+├── tsconfig.json         # Root TypeScript config
+├── tsconfig.node.json    # TypeScript config for Node
+└── vite.config.ts        # Vite configuration
 ```
 
 ## File Descriptions
@@ -95,18 +79,7 @@ taskplanner/
 | `tailwind.config.js` | Tailwind CSS theme customization |
 | `postcss.config.js` | PostCSS plugins configuration |
 | `eslint.config.js` | ESLint rules configuration |
-
-### Backend Files
-
-| File | Purpose |
-|------|---------|
-| `server/index.js` | Express server entry point, CORS, middleware |
-| `server/auth.js` | Password hashing, session management |
-| `server/store.js` | Read/write JSON files, migration, sharing methods |
-| `server/routes/auth.js` | Register, login, logout, me endpoints |
-| `server/routes/boards.js` | CRUD + sharing/permissions for boards |
-| `server/routes/labels.js` | CRUD operations for labels |
-| `server/routes/users.js` | List all users endpoint |
+| `nginx.conf` | Nginx server configuration |
 
 ### Frontend Files
 
@@ -119,20 +92,36 @@ taskplanner/
 | `src/components/board/Column.tsx` | Column with cards, sharing UI |
 | `src/components/board/Card.tsx` | Draggable card with sharing UI |
 | `src/components/board/CardModal.tsx` | Edit card modal |
+| `src/components/layout/Layout.tsx` | Main layout wrapper |
 | `src/components/layout/Sidebar.tsx` | Board navigation, export/import, sharing |
+| `src/components/ui/Button.tsx` | Button component |
+| `src/components/ui/IconPicker.tsx` | Icon picker component |
+| `src/components/ui/Input.tsx` | Input component |
+| `src/components/ui/Modal.tsx` | Modal dialog |
 | `src/components/ui/UserSelector.tsx` | Share modal with permission dropdown |
+| `src/context/AuthContext.tsx` | Authentication context provider |
+| `src/context/ThemeContext.tsx` | Theme context provider |
+| `src/lib/db.ts` | Database operations |
 | `src/store/useBoardStore.ts` | Zustand store for boards, labels, sharing |
-| `src/hooks/useAuth.ts` | Authentication state & actions |
 | `src/pages/BoardPage.tsx` | Board view with owner indicator for shared boards |
+| `src/pages/HomePage.tsx` | Dashboard with boards list |
+| `src/pages/LoginPage.tsx` | Login form |
+| `src/pages/RegisterPage.tsx` | Registration form |
+| `src/types/index.ts` | TypeScript type definitions |
 
-### Data Files
+### Deployment Files
 
-| File | Format | Contents |
-|------|--------|-----------|
-| `data/users.json` | Array of user objects | User accounts with password hashes |
-| `data/sessions.json` | Array of session objects | Active sessions with expiry |
-| `data/boards.json` | Array of board objects | Boards with columns and cards |
-| `data/labels.json` | Array of label objects | Label definitions |
+| File | Purpose |
+|------|---------|
+| `start.sh` | Startup script |
+| `deploy.sh` | Deployment script |
+| `deploy-to-server.sh` | Server deployment script |
+| `DEPLOY_COMMANDS.md` | Deployment commands |
+| `INSTALL.md` | Installation instructions |
+| `PRODUCTION_DEPLOYMENT.md` | Production deployment guide |
+| `nginx.conf` | Nginx configuration |
+| `docs.md` | Additional documentation |
+| `SCHEMA_STRUCTURE.md` | Database schema |
 
 ## Key Data Structures
 

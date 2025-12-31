@@ -212,7 +212,7 @@ export function Sidebar() {
 
   if (isCollapsed) {
     return (
-      <aside className="w-16 bg-surface border-r border-border flex flex-col h-screen shrink-0">
+      <aside className="w-16 bg-surface border-r border-border flex flex-col h-[100dvh] shrink-0">
         <div className="p-3 flex justify-center">
           <button
             onClick={() => setIsCollapsed(false)}
@@ -253,7 +253,7 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="p-3 border-t border-border flex flex-col items-center gap-2">
+        <div className="p-3 border-t border-border flex flex-col items-center gap-2 pb-safe">
           <button
             onClick={toggleTheme}
             className="w-10 h-10 bg-surfaceLight rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity"
@@ -284,7 +284,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-56 md:w-64 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-all duration-300">
+    <aside className="w-56 md:w-64 bg-surface border-r border-border flex flex-col h-[100dvh] shrink-0 transition-all duration-300">
       <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
@@ -421,7 +421,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border pb-safe">
         <div className="flex items-center gap-3 mb-4 px-2">
           <button
             onClick={handleOpenUserEdit}

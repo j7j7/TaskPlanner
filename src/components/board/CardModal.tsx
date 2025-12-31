@@ -32,7 +32,6 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   const { user } = useAuth();
   const { labels: allLabels } = useLabels();
   
-  // Filter labels by current user
   const userLabels = allLabels.filter((label) => label.userId === user?.id);
   const labels = propLabels.length > 0 ? propLabels : userLabels;
   
@@ -136,14 +135,13 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   const handleDeleteLabel = async (labelId: string) => {
     if (window.confirm('Delete this label? It will be removed from all cards.')) {
       await deleteLabel(labelId);
-      // Remove from selected labels if it was selected
       setSelectedLabels((prev) => prev.filter((id) => id !== labelId));
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md">
-      <div className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <div className="space-y-4 sm:space-y-6">
         <div>
           <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
             Title
@@ -153,7 +151,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
               <button
                 type="button"
                 onClick={() => !readOnly && setIsIconPickerOpen(true)}
-                className="text-2xl hover:scale-110 transition-transform flex-shrink-0"
+                className="text-2xl hover:scale-110 transition-transform flex-shrink-0 mt-1"
                 disabled={readOnly}
                 data-tooltip="Change icon"
               >
@@ -190,7 +188,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="input min-h-[100px] resize-y"
+            className="input min-h-[80px] sm:min-h-[100px] resize-y"
             placeholder="Add a description..."
             disabled={readOnly}
           />
@@ -218,13 +216,13 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
           <label className="block text-sm font-medium text-textMuted mb-2 font-display">
             Priority
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2">
             {PRIORITIES.map((p) => (
               <button
                 key={p.value}
                 type="button"
                 onClick={() => !readOnly && setPriority(p.value)}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all border-2 ${
+                className={`flex-1 py-2 px-1 sm:px-3 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
                   priority === p.value
                     ? 'border-current'
                     : 'border-transparent hover:border-border'
@@ -235,7 +233,8 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                 }}
                 disabled={readOnly}
               >
-                {p.label}
+                <span className="hidden sm:inline">{p.label}</span>
+                <span className="sm:hidden">{p.label[0]}</span>
               </button>
             ))}
           </div>
@@ -306,7 +305,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {labels.map((label) => {
               const isEditing = editingLabelId === label.id;
               const isOwner = label.userId === user?.id;
@@ -362,7 +361,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                       <button
                         type="button"
                         onClick={() => toggleLabel(label.id)}
-                        className={`px-3 py-1 rounded-md text-xs font-medium transition-all border-2 ${
+                        className={`px-2 py-1 rounded-md text-xs font-medium transition-all border-2 ${
                           selectedLabels.includes(label.id)
                             ? 'border-current'
                             : 'border-transparent hover:border-border/50'
@@ -433,14 +432,14 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
               onClick={handleDelete}
               loading={isDeleting}
             >
-              Delete Card
+              Delete
             </Button>
           )}
           <div className={`flex gap-2 ${!readOnly ? '' : 'w-full justify-end'}`}>
             <Button variant="ghost" onClick={onClose}>
               {readOnly ? 'Close' : 'Cancel'}
             </Button>
-            {!readOnly && <Button onClick={handleSave}>Save Changes</Button>}
+            {!readOnly && <Button onClick={handleSave}>Save</Button>}
           </div>
         </div>
       </div>

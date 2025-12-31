@@ -198,14 +198,31 @@
   }
 
   .modal-overlay {
-    @apply fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+    @apply fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4;
     animation: fadeIn 0.2s ease-out;
   }
 
   .modal-content {
-    @apply bg-surface border-2 border-border rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-auto;
+    @apply bg-surface border-2 border-border rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-lg h-[85svh] sm:h-auto sm:max-h-[85vh] flex flex-col;
     box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5), 0 10px 20px -5px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
-    animation: scaleIn 0.2s ease-out;
+    animation: slideUp 0.3s ease-out;
+    margin: 0;
+  }
+
+  .modal-body {
+    @apply overflow-y-auto overflow-x-hidden flex-1 min-h-0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 
   .label {
@@ -300,6 +317,10 @@
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #555;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
   }
 
   [data-tooltip]::after {

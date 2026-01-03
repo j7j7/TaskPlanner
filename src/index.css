@@ -274,6 +274,7 @@
     transition: transform 0.1s ease, box-shadow 0.1s ease;
     min-height: auto;
     height: auto;
+    max-width: 100%;
   }
 
   .task-card:hover {

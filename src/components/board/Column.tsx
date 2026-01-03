@@ -296,7 +296,7 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
             items={column.cards.map((card) => card.id)}
             strategy={isRotated ? horizontalListSortingStrategy : verticalListSortingStrategy}
           >
-            <div className={`${isRotated ? 'flex flex-row gap-3 h-full' : 'flex flex-col gap-3'}`}>
+            <div className={`${isRotated ? 'flex flex-row gap-3 h-full items-start' : 'flex flex-col gap-3'}`}>
               {column.cards.map((card, index) => {
                 const isOver = dragOverId === card.id && activeCardId !== card.id;
                 
@@ -310,7 +310,7 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                 const shouldShowPlaceholderBelow = isOver && activeCardIndex !== -1 && activeCardIndex > index;
                 
                 return (
-                  <div key={card.id} className={isRotated ? 'shrink-0' : ''}>
+                  <div key={card.id} className={isRotated ? 'shrink-0 w-72 min-w-72' : ''}>
                     {shouldShowPlaceholderAbove && (
                       <div className="h-2 mx-2 mb-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
                     )}

@@ -6,6 +6,7 @@ import { CardModal } from './CardModal';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useAuth } from '../../context/AuthContext';
 import { UserSelector } from '../ui/UserSelector';
+import { RichTextDisplay } from '../ui/RichTextDisplay';
 
 interface CardProps {
   card: CardType;
@@ -130,7 +131,7 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
           style={{ backgroundColor: priorityColors[card.priority] }}
         />
 
-        <div className="pl-3 flex flex-col h-full">
+        <div className="pl-3 flex flex-col">
           <div className="flex items-start justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {card.icon && (
@@ -160,9 +161,9 @@ export function Card({ card, labels, isDragOver = false }: CardProps) {
           </div>
 
           {card.description && (
-            <p className="text-xs text-textMuted mb-2 line-clamp-2">
-              {card.description}
-            </p>
+            <div className="text-xs text-textMuted mb-2 rich-text-card-preview" style={{ listStyle: 'revert' }}>
+              <RichTextDisplay content={card.description} />
+            </div>
           )}
 
           <div className="flex items-center justify-between gap-2 mb-2">

@@ -6,6 +6,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { IconPicker } from '../ui/IconPicker';
+import { RichTextEditor } from '../ui/RichTextEditor';
 
 interface CardModalProps {
   isOpen: boolean;
@@ -200,10 +201,9 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
           <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
             Description
           </label>
-          <textarea
+          <RichTextEditor
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="input min-h-[80px] sm:min-h-[100px] resize-y"
+            onChange={(html) => setDescription(html)}
             placeholder="Add a description..."
             disabled={readOnly}
           />

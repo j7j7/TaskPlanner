@@ -21,6 +21,7 @@ const schema = i.schema({
     // Boards namespace - top level entity
     boards: i.entity({
       title: i.string(),
+      description: i.string().optional(),
       userId: i.string().indexed(), // Owner - indexed for efficient queries
       order: i.number(), // For sorting boards for each user
       createdAt: i.number(),

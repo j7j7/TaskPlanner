@@ -15,7 +15,7 @@ interface BoardState {
   setCurrentUser: (user: User | null) => void;
 
   // Board actions
-  createBoard: (title: string) => Promise<Board | null>;
+  createBoard: (title: string, description?: string) => Promise<Board | null>;
   importBoard: (boardData: Partial<Board>, columns?: Column[]) => Promise<Board | null>;
   updateBoard: (boardId: string, data: Partial<Board>) => Promise<void>;
   deleteBoard: (boardId: string) => Promise<void>;
@@ -109,7 +109,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({ currentUser: user });
   },
 
-  createBoard: async (title: string) => {
+  createBoard: async (title: string, description?: string) => {
     const { currentUser } = get();
     if (!currentUser) {
       console.error('No current user when creating board');
@@ -128,6 +128,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const boardData = {
         id: newBoardId,
         title,
+        description: description?.trim() || undefined,
         userId: currentUser.id,
         order: maxOrder,
         createdAt: now(),

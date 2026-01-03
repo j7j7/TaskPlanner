@@ -55,6 +55,7 @@ export interface Board {
   id: string;
   userId: string;
   title: string;
+  description?: string;
   order: number;
   columns: Column[];
   createdAt: string;

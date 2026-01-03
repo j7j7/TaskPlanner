@@ -16,7 +16,7 @@ function getUserColor(userId: string): string {
 
 export function BoardPage() {
   const { id } = useParams<{ id: string }>();
-  const { createColumn, setCurrentBoard, clearCurrentBoard } = useBoardStore();
+  const { createColumn, setCurrentBoard, clearCurrentBoard, updateBoard } = useBoardStore();
   const { board, isLoading, error } = useBoard(id || '');
   const { users } = useUsers();
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
@@ -24,6 +24,9 @@ export function BoardPage() {
   const [newColumnColor, setNewColumnColor] = useState('#3b82f6');
   const [isCreating, setIsCreating] = useState(false);
   const [isRotated, setIsRotated] = useState(false);
+  const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
+  const [editBoardTitle, setEditBoardTitle] = useState('');
+  const [editBoardDescription, setEditBoardDescription] = useState('');
   const prevBoardIdRef = useRef<string | null>(null);
   const prevUpdatedAtRef = useRef<string | null>(null);
 
@@ -39,6 +42,9 @@ export function BoardPage() {
         prevUpdatedAtRef.current = board.updatedAt;
         // Sync currentBoard with the latest board data from InstantDB
         setCurrentBoard(board);
+        // Update edit form fields when board changes
+        setEditBoardTitle(board.title);
+        setEditBoardDescription(board.description || '');
       }
     } else if (prevBoardIdRef.current) {
       // Board was deleted or doesn't exist
@@ -54,7 +60,7 @@ export function BoardPage() {
         prevUpdatedAtRef.current = null;
       }
     };
-  }, [board?.id, board?.updatedAt, id, setCurrentBoard, clearCurrentBoard]);
+  }, [board?.id, board?.updatedAt, board?.title, board?.description, id, setCurrentBoard, clearCurrentBoard]);
 
   const handleAddColumn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +71,16 @@ export function BoardPage() {
     setIsCreating(false);
     setNewColumnTitle('');
     setIsAddColumnModalOpen(false);
+  };
+
+  const handleSaveBoard = async () => {
+    if (!board || !editBoardTitle.trim()) return;
+    
+    await updateBoard(board.id, {
+      title: editBoardTitle.trim(),
+      description: editBoardDescription.trim() || undefined,
+    });
+    setIsEditBoardModalOpen(false);
   };
 
   const isShared = board && (board.sharedWith?.length ?? 0) > 0;
@@ -109,9 +125,16 @@ export function BoardPage() {
                 {board?.title || 'Loading...'}
               </h1>
               {board && (
-                <p className="text-xs sm:text-sm text-textMuted mt-1">
-                  {board.columns?.length ?? 0} columns
-                </p>
+                <>
+                  {board.description && (
+                    <p className="text-xs sm:text-sm text-textMuted mt-1 line-clamp-2">
+                      {board.description}
+                    </p>
+                  )}
+                  <p className="text-xs sm:text-sm text-textMuted mt-1">
+                    {board.columns?.length ?? 0} columns
+                  </p>
+                </>
               )}
             </div>
           </div>
@@ -222,6 +245,51 @@ export function BoardPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isEditBoardModalOpen}
+        onClose={() => setIsEditBoardModalOpen(false)}
+        title="Edit Board"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+              Board Title
+            </label>
+            <input
+              type="text"
+              value={editBoardTitle}
+              onChange={(e) => setEditBoardTitle(e.target.value)}
+              className="input"
+              placeholder="e.g., Project Roadmap"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+              Description
+            </label>
+            <textarea
+              value={editBoardDescription}
+              onChange={(e) => setEditBoardDescription(e.target.value)}
+              className="input min-h-[100px] resize-y"
+              placeholder="Add a description for this board..."
+              rows={4}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setIsEditBoardModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveBoard}>
+              Save Changes
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

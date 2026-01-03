@@ -15,6 +15,7 @@ export function HomePage() {
     const navigate = useNavigate();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [newBoardTitle, setNewBoardTitle] = useState('');
+    const [newBoardDescription, setNewBoardDescription] = useState('');
     const [isCreating, setIsCreating] = useState(false);
 
     const handleCreateBoard = async (e: React.FormEvent) => {
@@ -22,11 +23,12 @@ export function HomePage() {
       if (!newBoardTitle.trim()) return;
 
       setIsCreating(true);
-      const board = await createBoard(newBoardTitle.trim());
+      const board = await createBoard(newBoardTitle.trim(), newBoardDescription.trim() || undefined);
       setIsCreating(false);
 
       if (board) {
         setNewBoardTitle('');
+        setNewBoardDescription('');
         setIsCreateModalOpen(false);
         navigate(`/board/${board.id}`);
       }
@@ -138,21 +140,48 @@ export function HomePage() {
 
         <Modal
           isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setNewBoardTitle('');
+            setNewBoardDescription('');
+          }}
           title="Create New Board"
           size="sm"
         >
           <form onSubmit={handleCreateBoard} className="space-y-4">
-            <Input
-              label="Board Title"
-              type="text"
-              value={newBoardTitle}
-              onChange={(e) => setNewBoardTitle(e.target.value)}
-              placeholder="e.g., Side Projects"
-              required
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
+            <div>
+              <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+                Board Title
+              </label>
+              <input
+                type="text"
+                value={newBoardTitle}
+                onChange={(e) => setNewBoardTitle(e.target.value)}
+                className="input"
+                placeholder="e.g., Side Projects"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+                Description
+              </label>
+              <textarea
+                value={newBoardDescription}
+                onChange={(e) => setNewBoardDescription(e.target.value)}
+                className="input min-h-[100px] resize-y"
+                placeholder="Add a description for this board..."
+                rows={4}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" type="button" onClick={() => {
+                setIsCreateModalOpen(false);
+                setNewBoardTitle('');
+                setNewBoardDescription('');
+              }}>
                 Cancel
               </Button>
               <Button type="submit" loading={isCreating}>

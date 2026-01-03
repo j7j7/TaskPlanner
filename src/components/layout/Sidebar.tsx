@@ -34,13 +34,7 @@ interface SortableBoardItemProps {
   isCollapsed: boolean;
   currentBoard: Board | null;
   user: { id: string; username?: string } | null;
-  editingBoardId: string | null;
-  editingBoardTitle: string;
   onStartEdit: (board: Board, e: React.MouseEvent) => void;
-  onSaveEdit: (boardId: string) => void;
-  onCancelEdit: () => void;
-  onEditKeyDown: (boardId: string, e: React.KeyboardEvent) => void;
-  onEditTitleChange: (value: string) => void;
   onOpenShare: (boardId: string, e: React.MouseEvent) => void;
   onDeleteBoard: (boardId: string, e: React.MouseEvent) => void;
   getBoardColor: (boardId: string) => string;
@@ -51,13 +45,7 @@ function SortableBoardItem({
   isCollapsed,
   currentBoard,
   user,
-  editingBoardId,
-  editingBoardTitle,
   onStartEdit,
-  onSaveEdit,
-  onCancelEdit,
-  onEditKeyDown,
-  onEditTitleChange,
   onOpenShare,
   onDeleteBoard,
   getBoardColor,
@@ -108,39 +96,31 @@ function SortableBoardItem({
       style={style}
       {...(canDrag ? { ...attributes, ...listeners } : {})}
     >
-      {editingBoardId === board.id ? (
-        <input
-          type="text"
-          value={editingBoardTitle ?? ''}
-          onChange={(e) => onEditTitleChange(e.target.value)}
-          onBlur={() => onSaveEdit(board.id)}
-          onKeyDown={(e) => onEditKeyDown(board.id, e)}
-          className="flex-1 bg-background border border-accent rounded px-2 py-1 text-sm text-text outline-none"
-          autoFocus
-          onClick={(e) => e.stopPropagation()}
-        />
-      ) : (
-        <Link
-          to={`/board/${board.id}`}
-          className="flex-1 font-medium flex items-center gap-2 min-w-0"
-          onClick={(e) => {
-            // Prevent navigation when dragging
-            if (isDragging) {
-              e.preventDefault();
-            }
-          }}
+      <Link
+        to={`/board/${board.id}`}
+        className="flex-1 font-medium flex items-center gap-2 min-w-0"
+        onClick={(e) => {
+          // Prevent navigation when dragging
+          if (isDragging) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <div
+          className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+          style={{ backgroundColor: getBoardColor(board.id) }}
         >
-          <div
-            className="w-6 h-6 rounded flex items-center justify-center shrink-0"
-            style={{ backgroundColor: getBoardColor(board.id) }}
-          >
-            <span className="text-background text-xs font-bold">
-              {(board.title || 'U').charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <span className="group-hover:truncate min-w-0">{board.title}</span>
-        </Link>
-      )}
+          <span className="text-background text-xs font-bold">
+            {(board.title || 'U').charAt(0).toUpperCase()}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="group-hover:truncate min-w-0 block">{board.title}</span>
+          {board.description && (
+            <span className="text-xs text-textMuted line-clamp-1 block">{board.description}</span>
+          )}
+        </div>
+      </Link>
       <div className="flex items-center gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-200">
         {board.userId === user?.id && (
           <button
@@ -189,11 +169,14 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
+  const [newBoardDescription, setNewBoardDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importError, setImportError] = useState('');
   const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
   const [editingBoardTitle, setEditingBoardTitle] = useState('');
+  const [editingBoardDescription, setEditingBoardDescription] = useState('');
+  const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
   const [sharingBoardId, setSharingBoardId] = useState<string | null>(null);
   const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
   const [editingUsername, setEditingUsername] = useState('');
@@ -245,11 +228,12 @@ export function Sidebar() {
     if (!newBoardTitle.trim()) return;
 
     setIsCreating(true);
-    const board = await createBoard(newBoardTitle.trim());
+    const board = await createBoard(newBoardTitle.trim(), newBoardDescription.trim() || undefined);
     setIsCreating(false);
 
     if (board) {
       setNewBoardTitle('');
+      setNewBoardDescription('');
       setIsCreateModalOpen(false);
       navigate(`/board/${board.id}`);
     }
@@ -276,33 +260,37 @@ export function Sidebar() {
     if (!hasBoardWriteAccess(board, user?.id)) return;
     setEditingBoardId(board.id);
     setEditingBoardTitle(board.title);
+    setEditingBoardDescription(board.description || '');
+    setIsEditBoardModalOpen(true);
   };
 
-  const handleSaveEdit = async (boardId: string) => {
-    if (!editingBoardTitle.trim()) {
+  const handleSaveEdit = async () => {
+    if (!editingBoardId || !editingBoardTitle.trim()) {
+      setIsEditBoardModalOpen(false);
       setEditingBoardId(null);
       return;
     }
-    const board = boards.find(b => b.id === boardId);
+    const board = boards.find(b => b.id === editingBoardId);
     if (!board || !hasBoardWriteAccess(board, user?.id)) {
+      setIsEditBoardModalOpen(false);
       setEditingBoardId(null);
       return;
     }
-    await updateBoard(boardId, { title: editingBoardTitle.trim() });
+    await updateBoard(editingBoardId, {
+      title: editingBoardTitle.trim(),
+      description: editingBoardDescription.trim() || undefined,
+    });
+    setIsEditBoardModalOpen(false);
     setEditingBoardId(null);
+    setEditingBoardTitle('');
+    setEditingBoardDescription('');
   };
 
   const handleCancelEdit = () => {
+    setIsEditBoardModalOpen(false);
     setEditingBoardId(null);
     setEditingBoardTitle('');
-  };
-
-  const handleEditKeyDown = (boardId: string, e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveEdit(boardId);
-    } else if (e.key === 'Escape') {
-      handleCancelEdit();
-    }
+    setEditingBoardDescription('');
   };
 
   const handleOpenShare = (boardId: string, e: React.MouseEvent) => {
@@ -424,7 +412,7 @@ export function Sidebar() {
               items={boards.filter(b => b.userId === user?.id).map(b => b.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="space-y-2">
+              <div className="flex flex-col items-center space-y-2">
                 {boards.map((board) => (
                   <SortableBoardItem
                     key={board.id}
@@ -432,13 +420,7 @@ export function Sidebar() {
                     isCollapsed={true}
                     currentBoard={currentBoard}
                     user={user}
-                    editingBoardId={editingBoardId}
-                    editingBoardTitle={editingBoardTitle}
                     onStartEdit={handleStartEdit}
-                    onSaveEdit={handleSaveEdit}
-                    onCancelEdit={handleCancelEdit}
-                    onEditKeyDown={handleEditKeyDown}
-                    onEditTitleChange={setEditingBoardTitle}
                     onOpenShare={handleOpenShare}
                     onDeleteBoard={handleDeleteBoard}
                     getBoardColor={getBoardColor}
@@ -561,13 +543,7 @@ export function Sidebar() {
                   isCollapsed={false}
                   currentBoard={currentBoard}
                   user={user}
-                  editingBoardId={editingBoardId}
-                  editingBoardTitle={editingBoardTitle}
                   onStartEdit={handleStartEdit}
-                  onSaveEdit={handleSaveEdit}
-                  onCancelEdit={handleCancelEdit}
-                  onEditKeyDown={handleEditKeyDown}
-                  onEditTitleChange={setEditingBoardTitle}
                   onOpenShare={handleOpenShare}
                   onDeleteBoard={handleDeleteBoard}
                   getBoardColor={getBoardColor}
@@ -627,21 +603,48 @@ export function Sidebar() {
 
       <Modal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setNewBoardTitle('');
+          setNewBoardDescription('');
+        }}
         title="Create New Board"
         size="sm"
       >
         <form onSubmit={handleCreateBoard} className="space-y-4">
-          <Input
-            label="Board Title"
-            type="text"
-            value={newBoardTitle}
-            onChange={(e) => setNewBoardTitle(e.target.value)}
-            placeholder="e.g., Side Projects"
-            required
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+              Board Title
+            </label>
+            <input
+              type="text"
+              value={newBoardTitle}
+              onChange={(e) => setNewBoardTitle(e.target.value)}
+              className="input"
+              placeholder="e.g., Side Projects"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+              Description
+            </label>
+            <textarea
+              value={newBoardDescription}
+              onChange={(e) => setNewBoardDescription(e.target.value)}
+              className="input min-h-[100px] resize-y"
+              placeholder="Add a description for this board..."
+              rows={4}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" type="button" onClick={() => {
+              setIsCreateModalOpen(false);
+              setNewBoardTitle('');
+              setNewBoardDescription('');
+            }}>
               Cancel
             </Button>
             <Button type="submit" loading={isCreating}>
@@ -705,6 +708,51 @@ export function Sidebar() {
         selectedUsers={boards.find(b => b.id === sharingBoardId)?.sharedWith || []}
         mode="manage"
       />
+
+      <Modal
+        isOpen={isEditBoardModalOpen}
+        onClose={handleCancelEdit}
+        title="Edit Board"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+              Board Title
+            </label>
+            <input
+              type="text"
+              value={editingBoardTitle}
+              onChange={(e) => setEditingBoardTitle(e.target.value)}
+              className="input"
+              placeholder="e.g., Project Roadmap"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+              Description
+            </label>
+            <textarea
+              value={editingBoardDescription}
+              onChange={(e) => setEditingBoardDescription(e.target.value)}
+              className="input min-h-[100px] resize-y"
+              placeholder="Add a description for this board..."
+              rows={4}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={handleCancelEdit}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isUserEditModalOpen}

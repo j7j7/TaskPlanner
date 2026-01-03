@@ -124,18 +124,15 @@ export function BoardPage() {
               <h1 className="text-lg sm:text-2xl font-display font-bold text-text truncate">
                 {board?.title || 'Loading...'}
               </h1>
-              {board && (
-                <>
-                  {board.description && (
-                    <p className="text-xs sm:text-sm text-textMuted mt-1 line-clamp-2">
-                      {board.description}
-                    </p>
-                  )}
-                  <p className="text-xs sm:text-sm text-textMuted mt-1">
-                    {board.columns?.length ?? 0} columns
-                  </p>
-                </>
-              )}
+               {board && (
+                 <>
+                   {board.description && (
+                     <p className="text-xs sm:text-sm text-textMuted mt-1 line-clamp-2">
+                       {board.description}
+                     </p>
+                   )}
+                 </>
+               )}
             </div>
           </div>
 

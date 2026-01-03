@@ -22,6 +22,7 @@ const schema = i.schema({
     boards: i.entity({
       title: i.string(),
       userId: i.string().indexed(), // Owner - indexed for efficient queries
+      order: i.number(), // For sorting boards for each user
       createdAt: i.number(),
       updatedAt: i.number(),
       sharedWith: i.any(), // Array of { userId, permission }

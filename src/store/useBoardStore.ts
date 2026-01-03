@@ -19,6 +19,7 @@ interface BoardState {
   importBoard: (boardData: Partial<Board>, columns?: Column[]) => Promise<Board | null>;
   updateBoard: (boardId: string, data: Partial<Board>) => Promise<void>;
   deleteBoard: (boardId: string) => Promise<void>;
+  moveBoard: (boardId: string, newIndex: number, userBoards: Board[]) => Promise<void>;
 
   // Column actions
   createColumn: (title: string, color: string) => Promise<void>;
@@ -116,11 +117,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
 
     try {
+      // Get existing boards for this user to calculate order
+      const { boards } = get();
+      const userBoards = boards.filter(b => b.userId === currentUser.id);
+      const maxOrder = userBoards.length > 0 
+        ? Math.max(...userBoards.map(b => b.order ?? 0)) + 1 
+        : 0;
+
       const newBoardId = id();
       const boardData = {
         id: newBoardId,
         title,
         userId: currentUser.id,
+        order: maxOrder,
         createdAt: now(),
         updatedAt: now(),
         sharedWith: [],
@@ -176,6 +185,37 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
   },
 
+  moveBoard: async (boardId: string, newIndex: number, userBoards: Board[]) => {
+    const { currentUser } = get();
+    if (!currentUser) {
+      console.error('moveBoard: Missing currentUser');
+      return;
+    }
+
+    try {
+      // Ensure boards are sorted by order
+      const sortedBoards = [...userBoards].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      
+      const boardIndex = sortedBoards.findIndex((b) => b.id === boardId);
+      if (boardIndex === -1) return;
+
+      // Reorder boards
+      const reorderedBoards = [...sortedBoards];
+      const [movedBoard] = reorderedBoards.splice(boardIndex, 1);
+      reorderedBoards.splice(newIndex, 0, movedBoard);
+
+      // Update order for all affected boards
+      const transactions: Parameters<typeof db.transact>[0] = reorderedBoards.map((board, index) =>
+        db.tx.boards[board.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
+      );
+
+      await db.transact(transactions);
+    } catch (error) {
+      console.error('moveBoard: Error moving board', error);
+      set({ error: `Failed to move board: ${error instanceof Error ? error.message : 'Unknown error'}` });
+    }
+  },
+
   importBoard: async (boardData: Partial<Board>, columns?: Column[]) => {
     const { currentUser } = get();
     if (!currentUser) {
@@ -187,11 +227,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const newBoardId = boardData.id || id();
       const timestamp = now();
 
+      // Get existing boards for this user to calculate order
+      const { boards } = get();
+      const userBoards = boards.filter(b => b.userId === currentUser.id);
+      const maxOrder = userBoards.length > 0 
+        ? Math.max(...userBoards.map(b => b.order ?? 0)) + 1 
+        : 0;
+
       const transactions: Parameters<typeof db.transact>[0] = [
         db.tx.boards[newBoardId].update({
           id: newBoardId,
           title: boardData.title || 'Imported Board',
           userId: currentUser.id,
+          order: boardData.order ?? maxOrder,
           createdAt: timestamp,
           updatedAt: timestamp,
           sharedWith: [],
@@ -248,6 +296,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         id: newBoardId,
         title: boardData.title || 'Imported Board',
         userId: currentUser.id,
+        order: boardData.order ?? maxOrder,
         createdAt: toISOTimestamp(timestamp),
         updatedAt: toISOTimestamp(timestamp),
         sharedWith: [],
@@ -884,9 +933,22 @@ export function useBoards() {
   });
   
   // Filter boards by current user (owned or shared)
-  const boards = boardsWithData
+  const filteredBoards = boardsWithData
     .map((board) => filterBoardForUser(board, currentUser?.id || null))
     .filter((board): board is Board => board !== null);
+
+  // Sort boards by order (user's boards first, then shared boards)
+  // For user's own boards, sort by order field
+  // For shared boards, maintain their relative order
+  const userBoards = filteredBoards
+    .filter(b => b.userId === currentUser?.id)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  
+  const sharedBoards = filteredBoards
+    .filter(b => b.userId !== currentUser?.id)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  
+  const boards = [...userBoards, ...sharedBoards];
 
   return { boards, isLoading, error };
 }

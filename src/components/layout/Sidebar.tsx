@@ -1,5 +1,8 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useBoardStore, useBoards } from '../../store/useBoardStore';
@@ -26,10 +29,161 @@ function hasBoardWriteAccess(board: Board, userId: string | undefined): boolean 
   return share?.permission === 'write';
 }
 
+interface SortableBoardItemProps {
+  board: Board;
+  isCollapsed: boolean;
+  currentBoard: Board | null;
+  user: { id: string; username?: string } | null;
+  editingBoardId: string | null;
+  editingBoardTitle: string;
+  onStartEdit: (board: Board, e: React.MouseEvent) => void;
+  onSaveEdit: (boardId: string) => void;
+  onCancelEdit: () => void;
+  onEditKeyDown: (boardId: string, e: React.KeyboardEvent) => void;
+  onEditTitleChange: (value: string) => void;
+  onOpenShare: (boardId: string, e: React.MouseEvent) => void;
+  onDeleteBoard: (boardId: string, e: React.MouseEvent) => void;
+  getBoardColor: (boardId: string) => string;
+}
+
+function SortableBoardItem({
+  board,
+  isCollapsed,
+  currentBoard,
+  user,
+  editingBoardId,
+  editingBoardTitle,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onEditKeyDown,
+  onEditTitleChange,
+  onOpenShare,
+  onDeleteBoard,
+  getBoardColor,
+}: SortableBoardItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: board.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  // Only allow dragging for user's own boards
+  const canDrag = board.userId === user?.id;
+
+  if (isCollapsed) {
+    return (
+      <Link
+        ref={canDrag ? setNodeRef : undefined}
+        to={`/board/${board.id}`}
+        className={`block w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+          currentBoard?.id === board.id
+            ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface'
+            : 'hover:opacity-80'
+        } ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        style={{ ...style, backgroundColor: getBoardColor(board.id) }}
+        data-tooltip={board.title || 'Untitled'}
+        {...(canDrag ? { ...attributes, ...listeners } : {})}
+      >
+        <span className="text-background font-display font-bold text-sm">
+          {(board.title || 'U').charAt(0).toUpperCase()}
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      ref={canDrag ? setNodeRef : undefined}
+      className={`sidebar-item group ${currentBoard?.id === board.id ? 'active' : ''}`}
+      style={style}
+      {...(canDrag ? { ...attributes, ...listeners } : {})}
+    >
+      {editingBoardId === board.id ? (
+        <input
+          type="text"
+          value={editingBoardTitle ?? ''}
+          onChange={(e) => onEditTitleChange(e.target.value)}
+          onBlur={() => onSaveEdit(board.id)}
+          onKeyDown={(e) => onEditKeyDown(board.id, e)}
+          className="flex-1 bg-background border border-accent rounded px-2 py-1 text-sm text-text outline-none"
+          autoFocus
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <Link
+          to={`/board/${board.id}`}
+          className="flex-1 font-medium flex items-center gap-2 min-w-0"
+          onClick={(e) => {
+            // Prevent navigation when dragging
+            if (isDragging) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <div
+            className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+            style={{ backgroundColor: getBoardColor(board.id) }}
+          >
+            <span className="text-background text-xs font-bold">
+              {(board.title || 'U').charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <span className="group-hover:truncate min-w-0">{board.title}</span>
+        </Link>
+      )}
+      <div className="flex items-center gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-200">
+        {board.userId === user?.id && (
+          <button
+            onClick={(e) => onOpenShare(board.id, e)}
+            className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
+            data-tooltip="Share board"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+          </button>
+        )}
+        {hasBoardWriteAccess(board, user?.id) && (
+          <button
+            onClick={(e) => onStartEdit(board, e)}
+            className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
+            data-tooltip="Edit board"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        )}
+        {board.userId === user?.id && (
+          <button
+            onClick={(e) => onDeleteBoard(board.id, e)}
+            className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-danger transition-all p-1"
+            data-tooltip="Delete board"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const { user, logout, updateUsername } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { currentBoard, createBoard, importBoard, updateBoard, deleteBoard, shareBoard } = useBoardStore();
+  const { currentBoard, createBoard, importBoard, updateBoard, deleteBoard, shareBoard, moveBoard } = useBoardStore();
   const { boards } = useBoards();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -45,6 +199,41 @@ export function Sidebar() {
   const [editingUsername, setEditingUsername] = useState('');
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || !user) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    if (activeId === overId) return;
+
+    // Only allow reordering user's own boards
+    const activeBoard = boards.find(b => b.id === activeId);
+    if (!activeBoard || activeBoard.userId !== user.id) return;
+
+    // Get user's boards sorted by order
+    const userBoards = boards
+      .filter(b => b.userId === user.id)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    const activeIndex = userBoards.findIndex(b => b.id === activeId);
+    const overIndex = userBoards.findIndex(b => b.id === overId);
+
+    if (activeIndex === -1 || overIndex === -1) return;
+
+    moveBoard(activeId, overIndex, userBoards);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -226,31 +415,44 @@ export function Sidebar() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          <div className="space-y-2">
-            {boards.map((board) => (
-              <Link
-                key={board.id}
-                to={`/board/${board.id}`}
-                className={`block w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                  currentBoard?.id === board.id
-                    ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface'
-                    : 'hover:opacity-80'
-                }`}
-                style={{ backgroundColor: getBoardColor(board.id) }}
-                data-tooltip={board.title || 'Untitled'}
-              >
-                <span className="text-background font-display font-bold text-sm">
-                  {(board.title || 'U').charAt(0).toUpperCase()}
-                </span>
-              </Link>
-            ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={boards.filter(b => b.userId === user?.id).map(b => b.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {boards.map((board) => (
+                  <SortableBoardItem
+                    key={board.id}
+                    board={board}
+                    isCollapsed={true}
+                    currentBoard={currentBoard}
+                    user={user}
+                    editingBoardId={editingBoardId}
+                    editingBoardTitle={editingBoardTitle}
+                    onStartEdit={handleStartEdit}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={handleCancelEdit}
+                    onEditKeyDown={handleEditKeyDown}
+                    onEditTitleChange={setEditingBoardTitle}
+                    onOpenShare={handleOpenShare}
+                    onDeleteBoard={handleDeleteBoard}
+                    getBoardColor={getBoardColor}
+                  />
+                ))}
 
-            {boards.length === 0 && (
-              <p className="text-xs text-textMuted text-center py-4">
-                No boards
-              </p>
-            )}
-          </div>
+                {boards.length === 0 && (
+                  <p className="text-xs text-textMuted text-center py-4">
+                    No boards
+                  </p>
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         <div className="p-3 border-t border-border flex flex-col items-center gap-2 pb-safe">
@@ -342,83 +544,44 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          {boards.map((board) => (
-            <div
-              key={board.id}
-              className={`sidebar-item group ${currentBoard?.id === board.id ? 'active' : ''}`}
-            >
-              {editingBoardId === board.id ? (
-                <input
-                  type="text"
-                  value={editingBoardTitle ?? ''}
-                  onChange={(e) => setEditingBoardTitle(e.target.value)}
-                  onBlur={() => handleSaveEdit(board.id)}
-                  onKeyDown={(e) => handleEditKeyDown(board.id, e)}
-                  className="flex-1 bg-background border border-accent rounded px-2 py-1 text-sm text-text outline-none"
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={boards.filter(b => b.userId === user?.id).map(b => b.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-1">
+              {boards.map((board) => (
+                <SortableBoardItem
+                  key={board.id}
+                  board={board}
+                  isCollapsed={false}
+                  currentBoard={currentBoard}
+                  user={user}
+                  editingBoardId={editingBoardId}
+                  editingBoardTitle={editingBoardTitle}
+                  onStartEdit={handleStartEdit}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={handleCancelEdit}
+                  onEditKeyDown={handleEditKeyDown}
+                  onEditTitleChange={setEditingBoardTitle}
+                  onOpenShare={handleOpenShare}
+                  onDeleteBoard={handleDeleteBoard}
+                  getBoardColor={getBoardColor}
                 />
-              ) : (
-                <Link
-                  to={`/board/${board.id}`}
-                  className="flex-1 font-medium flex items-center gap-2 min-w-0"
-                >
-                  <div
-                    className="w-6 h-6 rounded flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: getBoardColor(board.id) }}
-                  >
-                    <span className="text-background text-xs font-bold">
-                      {(board.title || 'U').charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <span className="group-hover:truncate min-w-0">{board.title}</span>
-                </Link>
-              )}
-              <div className="flex items-center gap-1 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all duration-200">
-                {board.userId === user?.id && (
-                  <button
-                    onClick={(e) => handleOpenShare(board.id, e)}
-                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
-                    data-tooltip="Share board"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                  </button>
-                )}
-                {hasBoardWriteAccess(board, user?.id) && (
-                  <button
-                    onClick={(e) => handleStartEdit(board, e)}
-                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-accent transition-all p-1"
-                    data-tooltip="Edit board"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-                )}
-                {board.userId === user?.id && (
-                  <button
-                    onClick={(e) => handleDeleteBoard(board.id, e)}
-                    className="opacity-0 group-hover:opacity-100 text-textMuted hover:text-danger transition-all p-1"
-                    data-tooltip="Delete board"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+              ))}
 
-          {boards.length === 0 && (
-            <p className="text-sm text-textMuted text-center py-4">
-              No boards yet
-            </p>
-          )}
-        </div>
+              {boards.length === 0 && (
+                <p className="text-sm text-textMuted text-center py-4">
+                  No boards yet
+                </p>
+              )}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       <div className="p-4 border-t border-border pb-safe">

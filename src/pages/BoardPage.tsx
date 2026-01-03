@@ -181,16 +181,33 @@ export function BoardPage() {
             <label className="block text-sm font-medium text-textMuted mb-2 font-display">
               Color
             </label>
-            <div className="flex gap-2">
-              {['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'].map((color) => (
+            <div className="flex gap-2 overflow-x-auto py-1 pb-2 scrollbar-thin">
+              {[
+                // Original colors
+                '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+                // Grey colors with progressive brightness and subtle blue tint
+                '#b8c0cd', '#8a95a8', '#5d6b7f', '#3f4a5c',
+                // Yellow variations (lightest to darkest)
+                '#fef3c7', '#fde68a', '#fbbf24', '#f59e0a',
+                // Green variations (lightest to darkest)
+                '#d1fae5', '#6ee7b7', '#10b981', '#22c55d',
+                // Blue variations (lightest to darkest)
+                '#dbeafe', '#93c5fd', '#60a5fa', '#3b82f5',
+                // Red variations (lightest to darkest)
+                '#fee2e2', '#fca5a5', '#f87171', '#ef4445',
+                // Orange variations (lightest to darkest)
+                '#fed7aa', '#fdba74', '#fb923c', '#f97315',
+                // Purple variations (lightest to darkest)
+                '#f3e8ff', '#d8b4fe', '#c084fc', '#8b5cf7'
+              ].map((color) => (
                 <button
                   key={color}
                   type="button"
                   onClick={() => setNewColumnColor(color)}
-                  className={`w-8 h-8 rounded-lg transition-all border-2 ${
+                  className={`rounded-lg transition-all border-2 shrink-0 ${
                     newColumnColor === color ? 'border-white scale-110' : 'border-transparent'
                   }`}
-                  style={{ backgroundColor: color }}
+                  style={{ backgroundColor: color, width: '22.4px', height: '22.4px' }}
                 />
               ))}
             </div>

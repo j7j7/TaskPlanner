@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { DndContext, type DragEndEvent, type DragOverEvent, DragOverlay, type DragStartEvent, rectIntersection, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Column } from './Column';
@@ -20,6 +20,44 @@ export function Board({ isRotated = false, onAddColumn }: { isRotated?: boolean;
     useSensor(KeyboardSensor)
   );
 
+  // IMPORTANT: All hooks must be called before any early returns
+  // Use refs to track drag over state (must be declared at top level)
+  const lastDragOverUpdateRef = useRef<number>(0);
+  const dragOverTimeoutRef = useRef<number | null>(null);
+
+  // Memoize columns and columnIds to prevent unnecessary recalculations
+  const columns = useMemo(() => 
+    (currentBoard?.columns ?? []).sort((a, b) => a.order - b.order),
+    [currentBoard?.columns]
+  );
+  const columnIds = useMemo(() => 
+    columns.map((col) => col.id),
+    [columns]
+  );
+
+  // All callbacks must be defined before early return to maintain hook order
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event;
+    const now = Date.now();
+    
+    // Throttle updates to max once per 16ms (~60fps) to reduce re-renders
+    if (now - lastDragOverUpdateRef.current < 16) {
+      // Clear any pending timeout and schedule an update
+      if (dragOverTimeoutRef.current !== null) {
+        clearTimeout(dragOverTimeoutRef.current);
+      }
+      dragOverTimeoutRef.current = window.setTimeout(() => {
+        setOverId(over?.id as string || null);
+        lastDragOverUpdateRef.current = Date.now();
+        dragOverTimeoutRef.current = null;
+      }, 16 - (now - lastDragOverUpdateRef.current));
+      return;
+    }
+    
+    lastDragOverUpdateRef.current = now;
+    setOverId(over?.id as string || null);
+  }, []);
+
   if (!currentBoard) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -27,9 +65,6 @@ export function Board({ isRotated = false, onAddColumn }: { isRotated?: boolean;
       </div>
     );
   }
-
-  const columns = (currentBoard.columns ?? []).sort((a, b) => a.order - b.order);
-  const columnIds = columns.map((col) => col.id);
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -50,11 +85,6 @@ export function Board({ isRotated = false, onAddColumn }: { isRotated?: boolean;
         break;
       }
     }
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    setOverId(over?.id as string || null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {

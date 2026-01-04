@@ -54,6 +54,7 @@ const schema = i.schema({
       icon: i.string().optional(),
       order: i.number(), // For sorting within column
       userId: i.string().indexed(), // Owner - indexed for efficient queries
+      isDormant: i.boolean(), // Flag indicating if card is dormant (for efficient querying)
       createdAt: i.number(),
       updatedAt: i.number(),
       sharedWith: i.any(), // Array of { userId, permission }
@@ -65,6 +66,14 @@ const schema = i.schema({
       color: i.string(),
       userId: i.string().indexed(), // Owner - indexed for efficient queries
       createdAt: i.number(),
+    }),
+    
+    // User preferences namespace - user-specific settings
+    userPreferences: i.entity({
+      userId: i.string().indexed(), // Owner - indexed for efficient queries
+      dormantDays: i.number(), // Number of days before cards become dormant (default: 30)
+      createdAt: i.number(),
+      updatedAt: i.number(),
     }),
   },
 });

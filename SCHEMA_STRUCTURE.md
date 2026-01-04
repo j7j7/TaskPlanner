@@ -45,6 +45,12 @@ The database uses a **normalized structure** with separate entities for boards, 
 - **Relationships**: None (user-scoped)
 - **Fields**: `name`, `color`, `createdAt`
 
+### 7. **userPreferences** Entity
+- **Primary Key**: `id`
+- **Owner**: `userId` (indexed)
+- **Relationships**: None (user-scoped)
+- **Fields**: `dormantDays` (number of days before cards become dormant, default: 30), `createdAt`, `updatedAt`
+
 ## Relationship Diagram
 
 ```
@@ -54,6 +60,7 @@ $users (id, username, passwordHash)
               └── columns (id, boardId, userId, title, color, order, sharedWith)
                     └── cards (id, columnId, boardId, userId, title, description, labels, priority, dueDate, assignee, icon, order, sharedWith)
 labels (id, userId, name, color)
+userPreferences (id, userId, dormantDays, createdAt, updatedAt)
 ```
 
 ## Key Benefits

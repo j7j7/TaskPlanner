@@ -3,9 +3,9 @@ import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import type { Column as ColumnType, SharedUser } from '../../types';
+import type { Column as ColumnType, SharedUser, Card as CardType } from '../../types';
 import { Card } from './Card';
-import { useBoardStore, useLabels } from '../../store/useBoardStore';
+import { useBoardStore, useLabels, useUserPreferences, isCardDormant } from '../../store/useBoardStore';
 import { useAuth } from '../../context/AuthContext';
 import { UserSelector } from '../ui/UserSelector';
 import { Modal } from '../ui/Modal';
@@ -47,9 +47,10 @@ function getUserColor(userId: string): string {
 }
 
 export function Column({ column, dragOverId, activeCardId, isRotated = false }: ColumnProps) {
-  const { createCard, deleteColumn, updateColumn, users, fetchUsers, currentBoard, shareColumn, unshareColumn } = useBoardStore();
+  const { createCard, deleteColumn, updateColumn, users, fetchUsers, currentBoard, shareColumn, unshareColumn, updateCard, toggleDormantCards, columnsShowingDormant } = useBoardStore();
   const { user } = useAuth();
   const { labels: allLabels } = useLabels();
+  const { dormantDays } = useUserPreferences(user?.id || null);
   
   // Filter labels by current user
   const labels = allLabels.filter((label) => label.userId === user?.id);
@@ -59,6 +60,19 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
   const [editColor, setEditColor] = useState(column.color);
+  
+  // Check if this column is showing dormant cards
+  const showDormantCards = columnsShowingDormant.has(column.id);
+  
+  // Get dormant count from column metadata (set in useBoard hook)
+  const dormantCount = (column as ColumnType & { _dormantCount?: number })._dormantCount || 0;
+  
+  // Separate active and dormant cards using isDormant flag
+  const activeCards = column.cards.filter((card) => !card.isDormant);
+  const dormantCards = column.cards.filter((card) => card.isDormant);
+  
+  // Cards to display (already filtered in useBoard based on showDormantCards)
+  const displayedCards = column.cards;
 
   // Make column sortable (draggable)
   const {
@@ -201,8 +215,23 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
             </span>
             <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
               <span className="text-xs text-textMuted font-mono bg-surfaceLight px-2 py-0.5 rounded-full">
-                {column.cards.length}
+                {activeCards.length}
+                {dormantCount > 0 && (
+                  <span className="text-textMuted/60">/{activeCards.length + dormantCount}</span>
+                )}
               </span>
+              {dormantCount > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleDormantCards(column.id);
+                  }}
+                  className="text-xs text-textMuted hover:text-accent transition-colors px-2 py-0.5 rounded bg-surfaceLight hover:bg-surfaceLight/80"
+                  data-tooltip={showDormantCards ? `Hide ${dormantCount} dormant card${dormantCount !== 1 ? 's' : ''}` : `Show ${dormantCount} dormant card${dormantCount !== 1 ? 's' : ''}`}
+                >
+                  {showDormantCards ? '−' : `+${dormantCount}`}
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -293,11 +322,12 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
           onDoubleClick={() => canWrite && setIsAddingCard(true)}
         >
           <SortableContext
-            items={column.cards.map((card) => card.id)}
+            items={displayedCards.map((card) => card.id)}
             strategy={isRotated ? horizontalListSortingStrategy : verticalListSortingStrategy}
           >
             <div className={`${isRotated ? 'flex flex-row gap-3 h-full items-start' : 'flex flex-col gap-3'}`}>
-              {column.cards.map((card, index) => {
+              {displayedCards.map((card, index) => {
+                const isDormant = isCardDormant(card, dormantDays);
                 const isOver = dragOverId === card.id && activeCardId !== card.id;
                 
                 // Find the active card's position
@@ -314,18 +344,25 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                     {shouldShowPlaceholderAbove && (
                       <div className="h-2 mx-2 mb-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
                     )}
-                    <Card
-                      card={card}
-                      labels={labels}
-                      isDragOver={isOver}
-                    />
+                    <div className={`relative ${isDormant ? 'opacity-60' : ''}`}>
+                      <Card
+                        card={card}
+                        labels={labels}
+                        isDragOver={isOver}
+                      />
+                      {isDormant && (
+                        <div className="absolute top-1 right-1 bg-textMuted/20 text-textMuted text-[8px] px-1.5 py-0.5 rounded font-mono">
+                          Dormant
+                        </div>
+                      )}
+                    </div>
                     {shouldShowPlaceholderBelow && (
                       <div className="h-2 mx-2 mt-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
                     )}
                   </div>
                 );
               })}
-              {column.cards.length === 0 && canWrite && (
+              {displayedCards.length === 0 && canWrite && (
                 <button
                   onClick={() => setIsAddingCard(true)}
                   className="py-4 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center text-textMuted hover:text-text hover:border-accent hover:bg-surfaceLight/50 transition-all cursor-pointer"

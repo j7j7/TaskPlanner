@@ -1,0 +1,103 @@
+{
+  "$default": {
+    "allow": {
+      "$default": "false"
+    }
+  },
+  "boards": {
+    "allow": {
+      "view": "isOwner || isShared",
+      "create": "auth.id != null",
+      "update": "isOwner || isSharedWithWrite",
+      "delete": "isOwner"
+    },
+    "bind": [
+      "isOwner",
+      "auth.id != null && auth.id == data.userId",
+      "isShared",
+      "auth.id != null && data.sharedWith != null && size(data.sharedWith) > 0",
+      "isSharedWithWrite",
+      "auth.id != null && data.sharedWith != null && size(data.sharedWith) > 0"
+    ]
+  },
+  "columns": {
+    "allow": {
+      "view": "isOwner || isShared || isBoardOwner",
+      "create": "auth.id != null",
+      "update": "isOwner || isSharedWithWrite || isBoardOwner",
+      "delete": "isOwner"
+    },
+    "bind": [
+      "isOwner",
+      "auth.id != null && auth.id == data.userId",
+      "isShared",
+      "auth.id != null && data.sharedWith != null && size(data.sharedWith) > 0",
+      "isSharedWithWrite",
+      "auth.id != null && data.sharedWith != null && size(data.sharedWith) > 0",
+      "isBoardOwner",
+      "auth.id != null && auth.id == data.ref('boards.userId')"
+    ]
+  },
+  "cards": {
+    "allow": {
+      "view": "isOwner || isShared || isColumnOwner || isBoardOwner",
+      "create": "auth.id != null",
+      "update": "isOwner || isSharedWithWrite || isColumnOwner || isBoardOwner",
+      "delete": "isOwner"
+    },
+    "bind": [
+      "isOwner",
+      "auth.id != null && auth.id == data.userId",
+      "isShared",
+      "auth.id != null && data.sharedWith != null && size(data.sharedWith) > 0",
+      "isSharedWithWrite",
+      "auth.id != null && data.sharedWith != null && size(data.sharedWith) > 0",
+      "isColumnOwner",
+      "auth.id != null && auth.id == data.ref('columns.userId')",
+      "isBoardOwner",
+      "auth.id != null && auth.id == data.ref('boards.userId')"
+    ]
+  },
+  "labels": {
+    "allow": {
+      "view": "isOwner",
+      "create": "auth.id != null && auth.id == data.userId",
+      "update": "isOwner",
+      "delete": "isOwner"
+    },
+    "bind": [
+      "isOwner",
+      "auth.id != null && auth.id == data.userId"
+    ]
+  },
+  "userPreferences": {
+    "allow": {
+      "view": "isOwner",
+      "create": "auth.id != null && auth.id == data.userId",
+      "update": "isOwner",
+      "delete": "isOwner"
+    },
+    "bind": [
+      "isOwner",
+      "auth.id != null && auth.id == data.userId"
+    ]
+  },
+  "users": {
+    "allow": {
+      "view": "true",
+      "create": "false",
+      "update": "isOwner",
+      "delete": "false"
+    },
+    "bind": [
+      "isOwner",
+      "auth.id != null && auth.id == data.id"
+    ]
+  },
+  "attrs": {
+    "allow": {
+      "create": "false"
+    }
+  }
+}
+

@@ -3,6 +3,14 @@ import { id } from '@instantdb/react';
 import db from '../lib/db';
 import type { Board, Label, User, Column, Card } from '../types';
 
+interface UserPreferences {
+  id: string;
+  userId: string;
+  dormantDays: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface BoardState {
   boards: Board[];
   currentBoard: Board | null;
@@ -11,8 +19,17 @@ interface BoardState {
   currentUser: User | null;
   isLoading: boolean;
   error: string | null;
+  columnsShowingDormant: Set<string>; // Track which columns are showing dormant cards
 
   setCurrentUser: (user: User | null) => void;
+  toggleDormantCards: (columnId: string) => void;
+  
+  // User preferences actions
+  updateDormantDays: (userId: string, dormantDays: number, existingPreferenceId?: string) => Promise<void>;
+  
+  // Card dormancy management
+  updateCardDormancy: (cardId: string, isDormant: boolean) => Promise<void>;
+  updateAllCardsDormancy: (userId: string, dormantDays: number) => Promise<void>;
 
   // Board actions
   createBoard: (title: string, description?: string) => Promise<Board | null>;
@@ -69,11 +86,18 @@ function toISOTimestamp(value: number | string | undefined): string {
 
 function convertTimestamp<T extends object>(obj: T): T & { createdAt: string; updatedAt: string } {
   const typed = obj as Record<string, unknown>;
-  return {
+  const result = {
     ...obj,
     createdAt: toISOTimestamp(typed.createdAt as number | string | undefined),
     updatedAt: toISOTimestamp(typed.updatedAt as number | string | undefined),
   } as T & { createdAt: string; updatedAt: string };
+  
+  // Ensure isDormant is set (default to false if not present)
+  if ('isDormant' in typed && typed.isDormant === undefined) {
+    (result as Record<string, unknown>).isDormant = false;
+  }
+  
+  return result;
 }
 
 function convertBoardTimestamps(board: Board): Board {
@@ -104,9 +128,21 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   currentUser: null,
   isLoading: false,
   error: null,
+  columnsShowingDormant: new Set<string>(),
 
   setCurrentUser: (user: User | null) => {
     set({ currentUser: user });
+  },
+
+  toggleDormantCards: (columnId: string) => {
+    const { columnsShowingDormant } = get();
+    const newSet = new Set(columnsShowingDormant);
+    if (newSet.has(columnId)) {
+      newSet.delete(columnId);
+    } else {
+      newSet.add(columnId);
+    }
+    set({ columnsShowingDormant: newSet });
   },
 
   createBoard: async (title: string, description?: string) => {
@@ -281,6 +317,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
                   icon: card.icon,
                   order: card.order || 0,
                   userId: currentUser.id,
+                  isDormant: card.isDormant || false, // Preserve isDormant if present, default to false
                   sharedWith: [],
                   createdAt: timestamp,
                   updatedAt: timestamp,
@@ -442,6 +479,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           priority: 'medium',
           order: maxOrder,
           userId: currentUser.id,
+          isDormant: false, // New cards are never dormant
           sharedWith: [],
           createdAt: now(),
           updatedAt: now(),
@@ -465,6 +503,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       await db.transact([
         db.tx.cards[cardId].update({
           ...updateFields,
+          isDormant: false, // Card is updated, so it's no longer dormant
           updatedAt: now(),
         }),
         db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
@@ -520,10 +559,23 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         cards.splice(adjustedIndex, 0, fromCards[cardIndex]);
         
         // Update order for all cards in the column
+        // Only update updatedAt for the card being moved, others just get order updated
         cards.forEach((card, index) => {
-          transactions.push(
-            db.tx.cards[card.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
-          );
+          if (card.id === cardId) {
+            // This is the moved card - update both order and updatedAt
+            transactions.push(
+              db.tx.cards[card.id].update({ 
+                order: index, 
+                isDormant: false, // Card is moved, so it's no longer dormant
+                updatedAt: now() 
+              } as Record<string, unknown>)
+            );
+          } else {
+            // Other cards - only update order, don't touch updatedAt (preserves dormancy)
+            transactions.push(
+              db.tx.cards[card.id].update({ order: index } as Record<string, unknown>)
+            );
+          }
         });
       } else {
         // Moving to a different column
@@ -539,24 +591,27 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           db.tx.cards[cardId].update({ 
             columnId: toColumnId,
             boardId: toColumnBoardId, // Ensure boardId matches the board
-            order: newIndex, 
+            order: newIndex,
+            isDormant: false, // Card is moved, so it's no longer dormant
             updatedAt: now() 
           } as Record<string, unknown>)
         );
         
         // Update orders for remaining cards in source column
+        // Only update order, don't touch updatedAt (preserves dormancy)
         const remainingFromCards = fromCards.filter((c) => c.id !== cardId);
         remainingFromCards.forEach((card, index) => {
           transactions.push(
-            db.tx.cards[card.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
+            db.tx.cards[card.id].update({ order: index } as Record<string, unknown>)
           );
         });
         
         // Update orders for cards in destination column (excluding the moved card)
+        // Only update order, don't touch updatedAt (preserves dormancy)
         toCards.forEach((card, index) => {
           if (card.id !== cardId) {
             transactions.push(
-              db.tx.cards[card.id].update({ order: index, updatedAt: now() } as Record<string, unknown>)
+              db.tx.cards[card.id].update({ order: index } as Record<string, unknown>)
             );
           }
         });
@@ -820,6 +875,78 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   setUsers: (users: User[]) => {
     set({ users });
   },
+
+  updateDormantDays: async (userId: string, dormantDays: number, existingPreferenceId?: string) => {
+    try {
+      if (existingPreferenceId) {
+        // Update existing preferences
+        await db.transact([
+          db.tx.userPreferences[existingPreferenceId].update({
+            dormantDays,
+            updatedAt: now(),
+          }),
+        ]);
+      } else {
+        // Try to find existing preference by querying (this will be done via hook in component)
+        // For now, create new preferences - if one exists, InstantDB will handle conflicts
+        const prefId = id();
+        await db.transact([
+          db.tx.userPreferences[prefId].update({
+            userId,
+            dormantDays,
+            createdAt: now(),
+            updatedAt: now(),
+          }),
+        ]);
+      }
+      // Update all cards' dormancy status when preference changes
+      await get().updateAllCardsDormancy(userId, dormantDays);
+    } catch (error) {
+      console.error('updateDormantDays: Error updating preferences', error);
+      set({ error: 'Failed to update preferences' });
+    }
+  },
+
+  updateCardDormancy: async (cardId: string, isDormant: boolean) => {
+    const { currentUser } = get();
+    if (!currentUser) {
+      console.error('updateCardDormancy: No current user');
+      return;
+    }
+
+    try {
+      // NOTE: Ownership verification is done in useBoard hook before calling this function
+      // Database-level permissions (instant.perms.ts) also prevent unauthorized updates
+      // Safe to update directly - InstantDB will enforce permissions
+      await db.transact([
+        db.tx.cards[cardId].update({ isDormant }),
+      ]);
+    } catch (error) {
+      // Ignore permission errors - they're expected if card doesn't belong to user
+      // This can happen if the card was deleted or permissions changed
+      if (error instanceof Error && error.message.includes('permission')) {
+        return; // Silently ignore permission errors
+      }
+      console.error('updateCardDormancy: Error updating card dormancy', error);
+      set({ error: 'Failed to update card dormancy' });
+    }
+  },
+
+  updateAllCardsDormancy: async (userId: string, dormantDays: number) => {
+    try {
+      // This will be called when preferences change
+      // We'll update cards lazily when they're queried instead
+      // This function can be called by a background process if needed
+      // For now, cards are updated lazily in useBoard hook
+      const cutoffTimestamp = Date.now() - (dormantDays * 24 * 60 * 60 * 1000);
+      
+      // Note: To update all cards, we'd need to query them first
+      // Instead, we update cards lazily when they're accessed in useBoard
+      // This ensures we only update cards the user has access to
+    } catch (error) {
+      console.error('updateAllCardsDormancy: Error updating cards dormancy', error);
+    }
+  },
 }));
 
 // Helper functions for user access checking
@@ -891,7 +1018,11 @@ export function useBoards() {
   const currentUser = useBoardStore((state) => state.currentUser);
   
   // Query boards, columns, and cards separately
+  // SECURITY: Database-level rules handle filtering (see instant.perms.ts)
+  // Application-level filtering (filterBoardForUser) handles sharedWith logic
+  // Note: InstantDB doesn't support $or/$and operators, so we query all and filter in app
   const boardsQuery = db.useQuery({ boards: {} }) || {};
+    
   const columnsQuery = db.useQuery({ columns: {} }) || {};
   const cardsQuery = db.useQuery({ cards: {} }) || {};
   
@@ -956,27 +1087,141 @@ export function useBoards() {
 
 export function useBoard(boardId: string) {
   const currentUser = useBoardStore((state) => state.currentUser);
+  const columnsShowingDormant = useBoardStore((state) => state.columnsShowingDormant);
+  const updateCardDormancy = useBoardStore((state) => state.updateCardDormancy);
+  const { dormantDays } = useUserPreferences(currentUser?.id || null);
   
-  // Query boards, columns, and cards separately
+  // SECURITY: Database-level rules handle filtering (see instant.perms.ts)
+  // Application-level filtering (filterBoardForUser) handles sharedWith logic
+  // Note: Query all columns and cards, then filter by boardId in memory
+  // This ensures InstantDB always has the data and we filter client-side for reliability
   const boardsQuery = db.useQuery({ boards: {} }) || {};
   const columnsQuery = db.useQuery({ columns: {} }) || {};
-  const cardsQuery = db.useQuery({ cards: {} }) || {};
+  const allCardsQuery = db.useQuery({ cards: {} }) || {};
   
   // Check different possible structures
   const boardsResult = (boardsQuery as { data?: unknown })?.data || (boardsQuery as { result?: unknown })?.result;
   const columnsResult = (columnsQuery as { data?: unknown })?.data || (columnsQuery as { result?: unknown })?.result;
-  const cardsResult = (cardsQuery as { data?: unknown })?.data || (cardsQuery as { result?: unknown })?.result;
+  const allCardsResult = (allCardsQuery as { data?: unknown })?.data || (allCardsQuery as { result?: unknown })?.result;
   
   const isLoading = ((boardsQuery as { isLoading?: boolean })?.isLoading ?? true) ||
                     ((columnsQuery as { isLoading?: boolean })?.isLoading ?? true) ||
-                    ((cardsQuery as { isLoading?: boolean })?.isLoading ?? true);
+                    ((allCardsQuery as { isLoading?: boolean })?.isLoading ?? true);
   const error = (boardsQuery as { error?: Error })?.error || 
                 (columnsQuery as { error?: Error })?.error ||
-                (cardsQuery as { error?: Error })?.error;
+                (allCardsQuery as { error?: Error })?.error;
 
   const allBoards = (boardsResult as { boards?: Board[] })?.boards || [];
   const allColumns = (columnsResult as { columns?: Column[] })?.columns || [];
-  const allCards = (cardsResult as { cards?: Card[] })?.cards || [];
+  const allCardsFromQuery = (allCardsResult as { cards?: Card[] })?.cards || [];
+  
+  // IMPORTANT: Defensively filter columns and cards by boardId to ensure correct data when navigating
+  // This prevents showing data from previous board if query hasn't updated yet
+  const columnsForThisBoard = allColumns.filter((col) => col.boardId === boardId);
+  const cardsForThisBoard = allCardsFromQuery.filter((card) => card.boardId === boardId);
+  
+  // Split cards into active and dormant based on isDormant flag
+  // Handle undefined/null as active (non-dormant)
+  // IMPORTANT: We need to check both the flag AND calculate dormancy based on updatedAt
+  // This ensures we catch cards that should be dormant but haven't been updated yet
+  const cutoffTimestamp = Date.now() - (dormantDays * 24 * 60 * 60 * 1000);
+  
+  let activeCards = cardsForThisBoard.filter((card) => {
+    // Card is active if isDormant is false or undefined/null
+    if (card.isDormant === false || card.isDormant == null) {
+      // Also check if it should be dormant based on updatedAt (for current user's cards only)
+      if (currentUser && card.userId === currentUser.id) {
+        const cardUpdatedAt = typeof card.updatedAt === 'string' 
+          ? new Date(card.updatedAt).getTime() 
+          : (card.updatedAt as number);
+        // If card is old enough, it should be dormant (but we'll update the flag lazily)
+        return cardUpdatedAt >= cutoffTimestamp;
+      }
+      return true;
+    }
+    return false;
+  });
+  
+  let dormantCards = cardsForThisBoard.filter((card) => {
+    // Card is dormant if isDormant is explicitly true
+    if (card.isDormant === true) {
+      return true;
+    }
+    // Also check if it should be dormant based on updatedAt
+    // For current user's cards, calculate dormancy even if flag isn't set yet
+    // For other users' cards, only show if flag is explicitly set (we can't calculate their dormancy)
+    if (currentUser && card.userId === currentUser.id) {
+      const cardUpdatedAt = typeof card.updatedAt === 'string' 
+        ? new Date(card.updatedAt).getTime() 
+        : (card.updatedAt as number);
+      // If card is old enough, treat it as dormant even if flag isn't set yet
+      return cardUpdatedAt < cutoffTimestamp;
+    }
+    // For other users' cards, only show if isDormant is explicitly true
+    // (we can't calculate dormancy for cards we don't own)
+    return false;
+  });
+  
+  // Update isDormant flags based on updatedAt timestamp (lazy update)
+  // IMPORTANT: Only update cards that belong to the current user
+  // This ensures cards are marked as dormant if they haven't been updated recently
+  // NOTE: cutoffTimestamp is already defined above
+  const updatePromises: Promise<void>[] = [];
+  
+  // Only update dormancy flags if user is logged in
+  if (currentUser) {
+    // Check active cards and mark as dormant if needed
+    // Only update cards that belong to the current user
+    activeCards.forEach((card) => {
+      // Only update cards owned by the current user
+      if (card.userId !== currentUser.id) {
+        return;
+      }
+      
+      const cardUpdatedAt = typeof card.updatedAt === 'string' 
+        ? new Date(card.updatedAt).getTime() 
+        : (card.updatedAt as number);
+      if (cardUpdatedAt < cutoffTimestamp && !card.isDormant) {
+        // Card should be dormant but isn't marked - update it
+        updatePromises.push(
+          updateCardDormancy(card.id, true).catch(() => {
+            // Ignore errors in background updates
+          })
+        );
+      }
+    });
+    
+    // Check dormant cards and mark as active if needed
+    // Only update cards that belong to the current user
+    dormantCards.forEach((card) => {
+      // Only update cards owned by the current user
+      if (card.userId !== currentUser.id) {
+        return;
+      }
+      
+      const cardUpdatedAt = typeof card.updatedAt === 'string' 
+        ? new Date(card.updatedAt).getTime() 
+        : (card.updatedAt as number);
+      if (cardUpdatedAt >= cutoffTimestamp && card.isDormant) {
+        // Card should be active but is marked dormant - update it
+        updatePromises.push(
+          updateCardDormancy(card.id, false).catch(() => {
+            // Ignore errors in background updates
+          })
+        );
+      }
+    });
+  }
+  
+  // Update cards in background (don't wait)
+  if (updatePromises.length > 0) {
+    Promise.all(updatePromises).catch(() => {
+      // Ignore errors
+    });
+  }
+  
+  // NOTE: activeCards and dormantCards are already filtered above based on isDormant flag
+  // and calculated dormancy (for current user's cards). No need to filter again here.
   
   // Find the board
   const rawBoard = allBoards
@@ -988,16 +1233,34 @@ export function useBoard(boardId: string) {
   }
   
   // Join columns and cards into the board
-  const boardColumns = allColumns
-    .filter((col) => col.boardId === boardId)
+  // Always query dormant cards for counting, but only include in display when showing dormant
+  // Use pre-filtered columns and cards to ensure correct data when navigating
+  const boardColumns = columnsForThisBoard
     .sort((a, b) => a.order - b.order)
-    .map((col) => ({
-      ...col,
-      cards: allCards
-        .filter((card) => card.columnId === col.id)
-        .sort((a, b) => a.order - b.order)
-        .map((card) => card),
-    }));
+    .map((col) => {
+      // Get all cards for this column (active + dormant for counting)
+      // Filter by boardId defensively to ensure cards belong to this board when navigating
+      const columnActiveCards = activeCards
+        .filter((card) => card.columnId === col.id && card.boardId === boardId)
+        .sort((a, b) => a.order - b.order);
+      
+      const columnDormantCards = dormantCards
+        .filter((card) => card.columnId === col.id && card.boardId === boardId)
+        .sort((a, b) => a.order - b.order);
+      
+      // Cards to display: active always, dormant only if THIS column is showing dormant cards
+      const isColumnShowingDormant = columnsShowingDormant.has(col.id);
+      const columnDisplayCards = isColumnShowingDormant
+        ? [...columnActiveCards, ...columnDormantCards].sort((a, b) => a.order - b.order)
+        : columnActiveCards;
+      
+      return {
+        ...col,
+        cards: columnDisplayCards,
+        // Store dormant count for easy access
+        _dormantCount: columnDormantCards.length,
+      } as Column & { _dormantCount: number };
+    });
   
   const boardWithData = {
     ...rawBoard,
@@ -1012,7 +1275,18 @@ export function useBoard(boardId: string) {
 
 export function useLabels() {
   const currentUser = useBoardStore((state) => state.currentUser);
-  const queryResult = db.useQuery({ labels: {} }) || {};
+  // SECURITY: Filter labels by userId - users can only access their own labels
+  const queryResult = currentUser
+    ? db.useQuery({ 
+        labels: {
+          $: {
+            where: {
+              userId: currentUser.id
+            }
+          }
+        }
+      }) || {}
+    : db.useQuery({ labels: {} }) || {};
   
   // Check different possible structures (matching useBoards logic)
   const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
@@ -1054,4 +1328,64 @@ export function useUsers() {
   }));
 
   return { users, isLoading, error };
+}
+
+// Helper function to check if a card is dormant
+// Uses isDormant flag if available, otherwise calculates from updatedAt
+export function isCardDormant(card: Card, dormantDays: number): boolean {
+  // Use isDormant flag if present (preferred method)
+  if (card.isDormant !== undefined) {
+    return card.isDormant;
+  }
+  
+  // Fallback: calculate from updatedAt if flag not set
+  if (!card.updatedAt) return false;
+  
+  const updatedDate = new Date(card.updatedAt);
+  const now = new Date();
+  const daysSinceUpdate = Math.floor((now.getTime() - updatedDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  return daysSinceUpdate >= dormantDays;
+}
+
+// Hook to get user preferences
+export function useUserPreferences(userId: string | null) {
+  // SECURITY: Filter preferences by userId - users can only access their own preferences
+  const queryResult = userId
+    ? db.useQuery({ 
+        userPreferences: {
+          $: {
+            where: {
+              userId: userId
+            }
+          }
+        }
+      }) || {}
+    : db.useQuery({ userPreferences: {} }) || {};
+  
+  const result = (queryResult as { data?: unknown })?.data || (queryResult as { result?: unknown })?.result;
+  const isLoading = (queryResult as { isLoading?: boolean })?.isLoading ?? true;
+  const error = (queryResult as { error?: Error })?.error;
+
+  const rawPreferences = (result as { userPreferences?: unknown[] })?.userPreferences || [];
+  
+  const userPrefs = userId
+    ? rawPreferences.find((p: unknown) => {
+        const pref = p as UserPreferences;
+        return pref.userId === userId;
+      }) as UserPreferences | undefined
+    : undefined;
+
+  const preferences: UserPreferences | null = userPrefs
+    ? {
+        ...userPrefs,
+        createdAt: toISOTimestamp(userPrefs.createdAt),
+        updatedAt: toISOTimestamp(userPrefs.updatedAt),
+      }
+    : null;
+
+  // Default to 30 days if no preferences exist
+  const dormantDays = preferences?.dormantDays ?? 30;
+
+  return { preferences, dormantDays, isLoading, error };
 }

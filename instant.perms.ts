@@ -1,0 +1,65 @@
+import type { InstantRules } from '@instantdb/react';
+
+const rules = {
+  "$default": {
+    "allow": {
+      "$default": "false"
+    }
+  },
+  "boards": {
+    "allow": {
+      "view": "auth.id != null",
+      "create": "auth.id != null",
+      "update": "auth.id != null",
+      "delete": "auth.id != null && auth.id == data.userId"
+    }
+  },
+  "columns": {
+    "allow": {
+      "view": "auth.id != null",
+      "create": "auth.id != null",
+      "update": "auth.id != null && (auth.id == data.userId || auth.id == data.ref('boards.userId'))",
+      "delete": "auth.id != null && auth.id == data.userId"
+    }
+  },
+  "cards": {
+    "allow": {
+      "view": "auth.id != null",
+      "create": "auth.id != null",
+      "update": "auth.id != null && (auth.id == data.userId || auth.id == data.ref('columns.userId') || auth.id == data.ref('boards.userId'))",
+      "delete": "auth.id != null && auth.id == data.userId"
+    }
+  },
+  "labels": {
+    "allow": {
+      "view": "auth.id != null && auth.id == data.userId",
+      "create": "auth.id != null && auth.id == data.userId",
+      "update": "auth.id != null && auth.id == data.userId",
+      "delete": "auth.id != null && auth.id == data.userId"
+    }
+  },
+  "userPreferences": {
+    "allow": {
+      "view": "auth.id != null && auth.id == data.userId",
+      "create": "auth.id != null && auth.id == data.userId",
+      "update": "auth.id != null && auth.id == data.userId",
+      "delete": "auth.id != null && auth.id == data.userId"
+    }
+  },
+  "users": {
+    "allow": {
+      "view": "true",
+      "create": "false",
+      "update": "auth.id != null && auth.id == data.id",
+      "delete": "false"
+    }
+  },
+  "attrs": {
+    "allow": {
+      "create": "false"
+    }
+  }
+} satisfies InstantRules;
+
+export default rules;
+

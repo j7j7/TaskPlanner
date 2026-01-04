@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useBoardStore, useBoards } from '../../store/useBoardStore';
+import { useBoardStore, useBoards, useUserPreferences } from '../../store/useBoardStore';
 import type { Board } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -163,7 +163,7 @@ function SortableBoardItem({
 export function Sidebar() {
   const { user, logout, updateUsername } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { currentBoard, createBoard, importBoard, updateBoard, deleteBoard, shareBoard, moveBoard } = useBoardStore();
+  const { currentBoard, createBoard, importBoard, updateBoard, deleteBoard, shareBoard, moveBoard, updateDormantDays } = useBoardStore();
   const { boards } = useBoards();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -181,7 +181,10 @@ export function Sidebar() {
   const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
   const [editingUsername, setEditingUsername] = useState('');
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+  const [editingDormantDays, setEditingDormantDays] = useState(30);
+  const [isUpdatingPreferences, setIsUpdatingPreferences] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { dormantDays, preferences } = useUserPreferences(user?.id || null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -368,6 +371,7 @@ export function Sidebar() {
 
   const handleOpenUserEdit = () => {
     setEditingUsername(user?.username || '');
+    setEditingDormantDays(dormantDays);
     setIsUserEditModalOpen(true);
   };
 
@@ -378,13 +382,34 @@ export function Sidebar() {
     setIsUpdatingUsername(true);
     try {
       await updateUsername(editingUsername.trim());
-      setIsUserEditModalOpen(false);
-      setEditingUsername('');
     } catch (error) {
       console.error('Failed to update username:', error);
     } finally {
       setIsUpdatingUsername(false);
     }
+  };
+
+  const handleSavePreferences = async () => {
+    if (!user) return;
+
+    setIsUpdatingPreferences(true);
+    try {
+      await updateDormantDays(user.id, editingDormantDays, preferences?.id);
+    } catch (error) {
+      console.error('Failed to update preferences:', error);
+    } finally {
+      setIsUpdatingPreferences(false);
+    }
+  };
+
+  const handleSaveAll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    await handleSaveUsername(e);
+    await handleSavePreferences();
+    setIsUserEditModalOpen(false);
+    setEditingUsername('');
   };
 
   if (isCollapsed) {
@@ -760,19 +785,48 @@ export function Sidebar() {
           setIsUserEditModalOpen(false);
           setEditingUsername('');
         }}
-        title="Edit Profile"
+        title="Edit Profile & Settings"
         size="sm"
       >
-        <form onSubmit={handleSaveUsername} className="space-y-4">
-          <Input
-            label="Username"
-            type="text"
-            value={editingUsername}
-            onChange={(e) => setEditingUsername(e.target.value)}
-            placeholder="Enter your username"
-            required
-          />
-          <div className="flex justify-between gap-2">
+        <form onSubmit={handleSaveAll} className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-sm font-display font-semibold text-textMuted uppercase tracking-wider">Profile</h3>
+            <Input
+              label="Username"
+              type="text"
+              value={editingUsername}
+              onChange={(e) => setEditingUsername(e.target.value)}
+              placeholder="Enter your username"
+              required
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-display font-semibold text-textMuted uppercase tracking-wider">Card Settings</h3>
+            <div>
+              <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+                Dormant Days
+              </label>
+              <p className="text-xs text-textMuted mb-2">
+                Cards that haven't been updated for this many days will be hidden from columns.
+              </p>
+              <input
+                type="number"
+                min="1"
+                max="365"
+                value={editingDormantDays}
+                onChange={(e) => setEditingDormantDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 30)))}
+                className="input"
+                placeholder="30"
+                required
+              />
+              <p className="text-xs text-textMuted mt-1">
+                Current: {dormantDays} day{dormantDays !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-between gap-2 pt-2 border-t border-border">
             <Button
               variant="danger"
               type="button"
@@ -791,8 +845,8 @@ export function Sidebar() {
               >
                 Cancel
               </Button>
-              <Button type="submit" loading={isUpdatingUsername}>
-                Save
+              <Button type="submit" loading={isUpdatingUsername || isUpdatingPreferences}>
+                Save Changes
               </Button>
             </div>
           </div>

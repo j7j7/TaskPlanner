@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/layout/Layout';
@@ -43,6 +43,12 @@ function UsersSync() {
   }, [users, setUsers, isLoading, error]);
 
   return null;
+}
+
+// Wrapper component to ensure BoardPage remounts when board ID changes
+function BoardPageWrapper() {
+  const { id } = useParams<{ id: string }>();
+  return <BoardPage key={id} />;
 }
 
 function AppRoutes() {
@@ -91,7 +97,7 @@ function AppRoutes() {
           element={
             user ? (
               <Layout>
-                <BoardPage />
+                <BoardPageWrapper />
               </Layout>
             ) : (
               <Navigate to="/login" replace />

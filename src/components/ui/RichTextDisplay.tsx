@@ -43,6 +43,7 @@ export function RichTextDisplay({
         heading: false,
         // Disable features we'll use separate extensions for
         strike: false,
+        underline: false, // Disable underline from StarterKit since we add it separately
         code: false,
         blockquote: false,
         bulletList: false,

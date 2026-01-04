@@ -16,7 +16,7 @@ function getUserColor(userId: string): string {
 
 export function BoardPage() {
   const { id } = useParams<{ id: string }>();
-  const { createColumn, setCurrentBoard, clearCurrentBoard, updateBoard } = useBoardStore();
+  const { createColumn, setCurrentBoard, clearCurrentBoard, updateBoard, columnsShowingDormant } = useBoardStore();
   const { board, isLoading, error } = useBoard(id || '');
   const { users } = useUsers();
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
@@ -30,27 +30,41 @@ export function BoardPage() {
   const prevBoardIdRef = useRef<string | null>(null);
   const prevUpdatedAtRef = useRef<string | null>(null);
 
+  // Track columnsShowingDormant to detect changes (compare Set contents, not reference)
+  const prevColumnsShowingDormantRef = useRef<Set<string>>(new Set(columnsShowingDormant));
+  const columnsShowingDormantSize = columnsShowingDormant.size;
+  const columnsShowingDormantStr = Array.from(columnsShowingDormant).sort().join(',');
+  
   useEffect(() => {
     // Update currentBoard whenever board data changes (reactive updates from InstantDB)
+    // Also update when columnsShowingDormant changes to refresh cards display
     if (board) {
       const boardIdChanged = board.id !== prevBoardIdRef.current;
       const boardUpdated = board.updatedAt !== prevUpdatedAtRef.current;
+      // Compare Set contents by comparing sorted string representation
+      const prevColumnsStr = Array.from(prevColumnsShowingDormantRef.current).sort().join(',');
+      const columnsShowingDormantChanged = columnsShowingDormantStr !== prevColumnsStr;
       
-      // Update if it's a different board or if the board data has changed
-      if (boardIdChanged || boardUpdated) {
+      // Update if it's a different board, if the board data has changed, or if columnsShowingDormant changed
+      // (columnsShowingDormant changes affect which cards are displayed)
+      if (boardIdChanged || boardUpdated || columnsShowingDormantChanged) {
         prevBoardIdRef.current = board.id;
         prevUpdatedAtRef.current = board.updatedAt;
+        prevColumnsShowingDormantRef.current = new Set(columnsShowingDormant);
         // Sync currentBoard with the latest board data from InstantDB
         setCurrentBoard(board);
-        // Update edit form fields when board changes
-        setEditBoardTitle(board.title);
-        setEditBoardDescription(board.description || '');
+        // Update edit form fields when board changes (not when columnsShowingDormant changes)
+        if (boardIdChanged || boardUpdated) {
+          setEditBoardTitle(board.title);
+          setEditBoardDescription(board.description || '');
+        }
       }
     } else if (prevBoardIdRef.current) {
       // Board was deleted or doesn't exist
       clearCurrentBoard();
       prevBoardIdRef.current = null;
       prevUpdatedAtRef.current = null;
+      prevColumnsShowingDormantRef.current = new Set();
     }
     
     return () => {
@@ -58,9 +72,10 @@ export function BoardPage() {
         clearCurrentBoard();
         prevBoardIdRef.current = null;
         prevUpdatedAtRef.current = null;
+        prevColumnsShowingDormantRef.current = new Set();
       }
     };
-  }, [board?.id, board?.updatedAt, board?.title, board?.description, id, setCurrentBoard, clearCurrentBoard]);
+  }, [board?.id, board?.updatedAt, board?.title, board?.description, columnsShowingDormantSize, columnsShowingDormantStr, id, setCurrentBoard, clearCurrentBoard]);
 
   const handleAddColumn = async (e: React.FormEvent) => {
     e.preventDefault();

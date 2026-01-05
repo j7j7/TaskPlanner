@@ -4,7 +4,6 @@ import { useBoardStore, useLabels } from '../../store/useBoardStore';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { IconPicker } from '../ui/IconPicker';
 import { RichTextEditor } from '../ui/RichTextEditor';
 
@@ -60,7 +59,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   const [selectedColumnId, setSelectedColumnId] = useState(card.columnId);
   const [isDone, setIsDone] = useState(card.isDone || false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCreatingLabel, setIsCreatingLabel] = useState(false);
+  const [isCreatingLabelModal, setIsCreatingLabelModal] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0]);
@@ -130,13 +129,14 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
     await createLabel(newLabelName.trim(), newLabelColor);
     setNewLabelName('');
     setNewLabelColor(LABEL_COLORS[0]);
-    setIsCreatingLabel(false);
+    setIsCreatingLabelModal(false);
   };
 
   const handleStartEditLabel = (label: Label) => {
     setEditingLabelId(label.id);
     setEditLabelName(label.name);
     setEditLabelColor(label.color);
+    setIsCreatingLabelModal(false);
   };
 
   const handleSaveEditLabel = async () => {
@@ -279,124 +279,31 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
           </div>
         </div>
 
-        {/* Labels Section */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-medium text-textMuted font-display">
-              Labels
-            </label>
-            {!readOnly && user && (
-              <button
-                type="button"
-                onClick={() => setIsCreatingLabel(!isCreatingLabel)}
-                className="text-xs text-accent hover:text-accent/80 transition-colors"
-              >
-                {isCreatingLabel ? 'Cancel' : '+ New Label'}
-              </button>
-            )}
-          </div>
-
-          {isCreatingLabel && !readOnly && (
-            <div className="mb-2 p-2.5 bg-surfaceLight rounded-lg border border-border">
-              <div className="space-y-2">
-                <Input
-                  label="Label Name"
-                  type="text"
-                  value={newLabelName}
-                  onChange={(e) => setNewLabelName(e.target.value)}
-                  placeholder="e.g., Bug, Feature"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleCreateLabel();
-                    }
-                  }}
-                />
-                <div>
-                  <label className="block text-xs font-medium text-textMuted mb-1 font-display">
-                    Color
-                  </label>
-                  <div className="flex gap-1.5 overflow-x-auto py-1 pb-1.5 scrollbar-thin">
-                    {LABEL_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setNewLabelColor(color)}
-                        className={`rounded-lg transition-all border-2 shrink-0 ${
-                          newLabelColor === color ? 'border-white scale-110' : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: color, width: '20px', height: '20px' }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleCreateLabel} disabled={!newLabelName.trim()}>
-                    Create
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => {
-                    setIsCreatingLabel(false);
-                    setNewLabelName('');
-                  }}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
+        {/* Two Column Layout: Labels and Due Date */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Labels Section */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-textMuted font-display">
+                Labels
+              </label>
+              {!readOnly && user && (
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingLabelModal(true)}
+                  className="text-xs text-accent hover:text-accent/80 transition-colors"
+                >
+                  + New Label
+                </button>
+              )}
             </div>
-          )}
 
-          <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto scrollbar-thin">
-            {labels.map((label) => {
-              const isEditing = editingLabelId === label.id;
-              const isOwner = label.userId === user?.id;
-              
-              return (
-                <div key={label.id} className="relative group">
-                  {isEditing && isOwner ? (
-                    <div className="flex items-center gap-1 p-1 bg-surfaceLight rounded-md border border-border">
-                      <input
-                        type="text"
-                        value={editLabelName}
-                        onChange={(e) => setEditLabelName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveEditLabel();
-                          if (e.key === 'Escape') setEditingLabelId(null);
-                        }}
-                        className="text-xs px-2 py-1 bg-background border border-border rounded flex-1 min-w-[60px]"
-                        autoFocus
-                      />
-                      <div className="flex gap-1 items-center">
-                        <div className="flex gap-0.5 overflow-x-auto py-0.5 scrollbar-thin max-w-[80px]">
-                          {LABEL_COLORS.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => setEditLabelColor(color)}
-                            className={`rounded border-2 transition-all shrink-0 ${
-                              editLabelColor === color ? 'border-white scale-110' : 'border-transparent'
-                            }`}
-                            style={{ backgroundColor: color, width: '12px', height: '12px' }}
-                            data-tooltip="Select color"
-                          />
-                          ))}
-                        </div>
-                          <button
-                            type="button"
-                            onClick={handleSaveEditLabel}
-                            className="text-xs px-1.5 py-0.5 bg-accent text-gray-800 rounded hover:opacity-90"
-                          >
-                          ✓
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingLabelId(null)}
-                          className="text-xs px-1.5 py-0.5 bg-surfaceLight text-textMuted rounded hover:bg-border"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+            <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-x-auto scrollbar-thin scrollbar-x-auto">
+              {labels.map((label) => {
+                const isOwner = label.userId === user?.id;
+                
+                return (
+                  <div key={label.id} className="relative group">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -441,28 +348,28 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-            {labels.length === 0 && !isCreatingLabel && (
-              <p className="text-xs text-textMuted italic">No labels yet. Create one to get started.</p>
-            )}
+                  </div>
+                );
+              })}
+              {labels.length === 0 && (
+                <p className="text-xs text-textMuted italic">No labels yet. Create one to get started.</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Due Date Section */}
-        <div>
-          <label className="block text-xs font-medium text-textMuted mb-1 font-display">
-            Due Date
-          </label>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="input py-2 text-sm"
-            disabled={readOnly}
-          />
+          {/* Due Date Section */}
+          <div>
+            <label className="block text-xs font-medium text-textMuted mb-1 font-display">
+              Due Date
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="input py-2 text-sm"
+              disabled={readOnly}
+            />
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -492,6 +399,127 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
         onSelect={(selectedIcon) => setIcon(selectedIcon)}
         currentIcon={icon}
       />
+
+      <Modal isOpen={isCreatingLabelModal} onClose={() => setIsCreatingLabelModal(false)} size="sm">
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium font-display">Create New Label</h3>
+          <div>
+            <label className="block text-xs font-medium text-textMuted mb-1 font-display">
+              Label Name
+            </label>
+            <input
+              type="text"
+              value={newLabelName}
+              onChange={(e) => setNewLabelName(e.target.value)}
+              placeholder="e.g., Bug, Feature"
+              className="input py-2 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newLabelName.trim()) {
+                  e.preventDefault();
+                  handleCreateLabel();
+                }
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-textMuted mb-1 font-display">
+              Color
+            </label>
+            <div className="flex gap-1.5 overflow-x-auto py-1 pb-1.5 scrollbar-thin">
+              {LABEL_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setNewLabelColor(color)}
+                  className={`rounded-lg transition-all border-2 shrink-0 ${
+                    newLabelColor === color ? 'border-white scale-110' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: color, width: '24px', height: '24px' }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsCreatingLabelModal(false);
+                setNewLabelName('');
+                setNewLabelColor(LABEL_COLORS[0]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleCreateLabel}
+              disabled={!newLabelName.trim()}
+            >
+              Create
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={!!editingLabelId} onClose={() => setEditingLabelId(null)} size="sm">
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium font-display">Edit Label</h3>
+          <div>
+            <label className="block text-xs font-medium text-textMuted mb-1 font-display">
+              Label Name
+            </label>
+            <input
+              type="text"
+              value={editLabelName}
+              onChange={(e) => setEditLabelName(e.target.value)}
+              className="input py-2 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && editLabelName.trim()) {
+                  e.preventDefault();
+                  handleSaveEditLabel();
+                }
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-textMuted mb-1 font-display">
+              Color
+            </label>
+            <div className="flex gap-1.5 overflow-x-auto py-1 pb-1.5 scrollbar-thin">
+              {LABEL_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setEditLabelColor(color)}
+                  className={`rounded-lg transition-all border-2 shrink-0 ${
+                    editLabelColor === color ? 'border-white scale-110' : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: color, width: '24px', height: '24px' }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditingLabelId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveEditLabel}
+              disabled={!editLabelName.trim()}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }

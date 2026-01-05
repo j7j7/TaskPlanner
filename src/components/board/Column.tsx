@@ -328,6 +328,8 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
             <div className={`${isRotated ? 'flex flex-row gap-3 h-full items-start' : 'flex flex-col gap-3'}`}>
               {displayedCards.map((card, index) => {
                 const isDormant = isCardDormant(card, dormantDays);
+                const isDone = card.isDone === true;
+                const isDormantOrDone = isDormant || isDone;
                 const isOver = dragOverId === card.id && activeCardId !== card.id;
                 
                 // Find the active card's position
@@ -344,7 +346,7 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                     {shouldShowPlaceholderAbove && (
                       <div className="h-2 mx-2 mb-1 bg-accent/30 rounded border-2 border-dashed border-accent transition-all" />
                     )}
-                    <div className={`relative ${isDormant ? 'opacity-60' : ''}`}>
+                    <div className={`relative ${isDormantOrDone ? 'opacity-60' : ''}`}>
                       <Card
                         card={card}
                         labels={labels}
@@ -353,6 +355,11 @@ export function Column({ column, dragOverId, activeCardId, isRotated = false }: 
                       {isDormant && (
                         <div className="absolute top-1 right-1 bg-textMuted/20 text-textMuted text-[8px] px-1.5 py-0.5 rounded font-mono">
                           Dormant
+                        </div>
+                      )}
+                      {isDone && (
+                        <div className="absolute top-1 right-1 bg-textMuted/20 text-textMuted text-[8px] px-1.5 py-0.5 rounded font-mono">
+                          Done
                         </div>
                       )}
                     </div>

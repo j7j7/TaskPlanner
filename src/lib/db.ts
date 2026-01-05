@@ -55,6 +55,7 @@ const schema = i.schema({
       order: i.number(), // For sorting within column
       userId: i.string().indexed(), // Owner - indexed for efficient queries
       isDormant: i.boolean(), // Flag indicating if card is dormant (for efficient querying)
+      isDone: i.boolean().optional(), // Flag indicating if card is marked as done
       createdAt: i.number(),
       updatedAt: i.number(),
       sharedWith: i.any(), // Array of { userId, permission }

@@ -33,6 +33,7 @@ export interface Card {
   icon?: string;
   order: number;
   isDormant: boolean;
+  isDone: boolean;
   createdAt: string;
   updatedAt: string;
   userId: string;

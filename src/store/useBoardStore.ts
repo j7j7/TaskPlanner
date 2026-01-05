@@ -97,6 +97,11 @@ function convertTimestamp<T extends object>(obj: T): T & { createdAt: string; up
     (result as Record<string, unknown>).isDormant = false;
   }
   
+  // Ensure isDone is set (default to false if not present)
+  if ('isDone' in typed && typed.isDone === undefined) {
+    (result as Record<string, unknown>).isDone = false;
+  }
+  
   return result;
 }
 
@@ -318,6 +323,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
                   order: card.order || 0,
                   userId: currentUser.id,
                   isDormant: card.isDormant || false, // Preserve isDormant if present, default to false
+                  isDone: card.isDone || false, // Preserve isDone if present, default to false
                   sharedWith: [],
                   createdAt: timestamp,
                   updatedAt: timestamp,
@@ -480,6 +486,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           order: maxOrder,
           userId: currentUser.id,
           isDormant: false, // New cards are never dormant
+          isDone: false, // New cards are not done
           sharedWith: [],
           createdAt: now(),
           updatedAt: now(),
@@ -498,17 +505,42 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     try {
       // Remove fields that shouldn't be updated directly (they're managed by the system)
-      const { id: _, columnId, boardId, createdAt, ...updateFields } = updates;
+      const { id: _, columnId, boardId, createdAt, isDone, ...updateFields } = updates;
       
+      // Build the update object without isDone first
+      const cardUpdate: Record<string, unknown> = {
+        ...updateFields,
+        isDormant: false, // Card is updated, so it's no longer dormant
+        updatedAt: now(),
+      };
+      
+      // Update card without isDone first
       await db.transact([
-        db.tx.cards[cardId].update({
-          ...updateFields,
-          isDormant: false, // Card is updated, so it's no longer dormant
-          updatedAt: now(),
-        }),
+        db.tx.cards[cardId].update(cardUpdate),
         db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
       ]);
+      
+      // If isDone is provided, update it separately
+      // This allows other fields to update even if isDone schema hasn't synced yet
+      if (isDone !== undefined) {
+        try {
+          await db.transact([
+            db.tx.cards[cardId].update({ 
+              isDone, 
+              updatedAt: now() 
+            }),
+            // Update board's updatedAt to trigger reactive refresh
+            db.tx.boards[currentBoard.id].update({ updatedAt: now() }),
+          ]);
+        } catch (isDoneError) {
+          // If isDone update fails, log but don't fail the entire operation
+          // This allows the card to be updated even if schema hasn't synced
+          console.warn('Failed to update isDone field - schema may not be synced yet:', isDoneError);
+          // Don't throw - other fields were updated successfully
+        }
+      }
     } catch (error) {
+      console.error('updateCard error:', error);
       set({ error: 'Failed to update card' });
     }
   },
@@ -1127,6 +1159,10 @@ export function useBoard(boardId: string) {
   const cutoffTimestamp = Date.now() - (dormantDays * 24 * 60 * 60 * 1000);
   
   let activeCards = cardsForThisBoard.filter((card) => {
+    // Exclude done cards from active cards (same as dormant)
+    if (card.isDone === true) {
+      return false;
+    }
     // Card is active if isDormant is false or undefined/null
     if (card.isDormant === false || card.isDormant == null) {
       // Also check if it should be dormant based on updatedAt (for current user's cards only)
@@ -1143,6 +1179,10 @@ export function useBoard(boardId: string) {
   });
   
   let dormantCards = cardsForThisBoard.filter((card) => {
+    // Include done cards in dormant cards (same behavior as dormant)
+    if (card.isDone === true) {
+      return true;
+    }
     // Card is dormant if isDormant is explicitly true
     if (card.isDormant === true) {
       return true;
@@ -1389,3 +1429,4 @@ export function useUserPreferences(userId: string | null) {
 
   return { preferences, dormantDays, isLoading, error };
 }
+

@@ -19,15 +19,9 @@ rm -rf node_modules/.vite 2>/dev/null
 echo "✅ Cache cleared"
 
 echo ""
-echo "📦 Checking dependencies..."
-cd "$(dirname "$0")"
-
-if [ ! -d "node_modules" ]; then
-    echo "📦 Installing dependencies..."
-    npm install
-else
-    echo "✅ Dependencies already installed"
-fi
+echo "📦 Installing dependencies..."
+npm install
+echo "✅ Dependencies installed"
 
 echo ""
 echo "🔨 Building application..."

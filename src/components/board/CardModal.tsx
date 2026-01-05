@@ -58,6 +58,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   const [selectedLabels, setSelectedLabels] = useState<string[]>(card.labels);
   const [icon, setIcon] = useState<string>(card.icon || '');
   const [selectedColumnId, setSelectedColumnId] = useState(card.columnId);
+  const [isDone, setIsDone] = useState(card.isDone || false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingLabel, setIsCreatingLabel] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
@@ -77,6 +78,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
     setSelectedLabels(card.labels);
     setIcon(card.icon || '');
     setSelectedColumnId(card.columnId);
+    setIsDone(card.isDone || false);
   }, [card]);
 
   const handleColumnChange = async (newColumnId: string) => {
@@ -103,6 +105,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
       dueDate: dueDate || undefined,
       labels: selectedLabels,
       icon: icon || undefined,
+      isDone,
     });
     onClose();
   };
@@ -156,10 +159,27 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="space-y-4 sm:space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <div className="space-y-3 relative">
+        {/* Done Status - Top Right */}
+        <div className="absolute top-0 right-0">
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <span className="text-xs font-medium text-textMuted font-display group-hover:text-text transition-colors">
+              Done
+            </span>
+            <input
+              type="checkbox"
+              checked={isDone}
+              onChange={(e) => !readOnly && setIsDone(e.target.checked)}
+              disabled={readOnly}
+              className="w-4 h-4 rounded border-2 border-border bg-background text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </label>
+        </div>
+
+        {/* Title Section */}
         <div>
-          <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+          <label className="block text-xs font-medium text-textMuted mb-1 font-display">
             Title
           </label>
           <div className="flex items-center gap-2">
@@ -167,7 +187,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
               <button
                 type="button"
                 onClick={() => !readOnly && setIsIconPickerOpen(true)}
-                className="text-2xl hover:scale-110 transition-transform flex-shrink-0 mt-1"
+                className="text-xl hover:scale-110 transition-transform flex-shrink-0"
                 disabled={readOnly}
                 data-tooltip="Change icon"
               >
@@ -178,7 +198,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="input flex-1"
+              className="input flex-1 py-2 text-sm"
               placeholder="Card title..."
               disabled={readOnly}
             />
@@ -186,10 +206,10 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
               <button
                 type="button"
                 onClick={() => setIsIconPickerOpen(true)}
-                className="px-3 py-2 text-textMuted hover:text-accent hover:bg-surfaceLight rounded-lg transition-colors flex-shrink-0"
+                className="px-2 py-2 text-textMuted hover:text-accent hover:bg-surfaceLight rounded-lg transition-colors flex-shrink-0"
                 data-tooltip="Add icon"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </button>
@@ -197,8 +217,9 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
           </div>
         </div>
 
+        {/* Description Section - Limited Height */}
         <div>
-          <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+          <label className="block text-xs font-medium text-textMuted mb-1 font-display">
             Description
           </label>
           <RichTextEditor
@@ -206,58 +227,62 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
             onChange={(html) => setDescription(html)}
             placeholder="Add a description..."
             disabled={readOnly}
+            className="max-h-[140px]"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
-            Column
-          </label>
-          <select
-            value={selectedColumnId}
-            onChange={(e) => handleColumnChange(e.target.value)}
-            className="input"
-            disabled={readOnly || columns.length === 0}
-          >
-            {columns.map((column) => (
-              <option key={column.id} value={column.id}>
-                {column.title}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Two Column Layout: Column and Priority */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-textMuted mb-1 font-display">
+              Column
+            </label>
+            <select
+              value={selectedColumnId}
+              onChange={(e) => handleColumnChange(e.target.value)}
+              className="input py-2 text-sm"
+              disabled={readOnly || columns.length === 0}
+            >
+              {columns.map((column) => (
+                <option key={column.id} value={column.id}>
+                  {column.title}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-textMuted mb-2 font-display">
-            Priority
-          </label>
-          <div className="flex gap-1 sm:gap-2">
-            {PRIORITIES.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                onClick={() => !readOnly && setPriority(p.value)}
-                className={`flex-1 py-2 px-1 sm:px-3 rounded-lg text-xs sm:text-sm font-medium transition-all border-2 ${
-                  priority === p.value
-                    ? 'border-current'
-                    : 'border-transparent hover:border-border'
-                } ${readOnly ? 'cursor-default opacity-50' : ''}`}
-                style={{
-                  backgroundColor: priority === p.value ? `${p.color}20` : 'transparent',
-                  color: p.color,
-                }}
-                disabled={readOnly}
-              >
-                <span className="hidden sm:inline">{p.label}</span>
-                <span className="sm:hidden">{p.label[0]}</span>
-              </button>
-            ))}
+          <div>
+            <label className="block text-xs font-medium text-textMuted mb-1 font-display">
+              Priority
+            </label>
+            <div className="flex gap-1">
+              {PRIORITIES.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => !readOnly && setPriority(p.value)}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all border-2 ${
+                    priority === p.value
+                      ? 'border-current'
+                      : 'border-transparent hover:border-border'
+                  } ${readOnly ? 'cursor-default opacity-50' : ''}`}
+                  style={{
+                    backgroundColor: priority === p.value ? `${p.color}20` : 'transparent',
+                    color: p.color,
+                  }}
+                  disabled={readOnly}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
+        {/* Labels Section */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-textMuted font-display">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-medium text-textMuted font-display">
               Labels
             </label>
             {!readOnly && user && (
@@ -272,7 +297,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
           </div>
 
           {isCreatingLabel && !readOnly && (
-            <div className="mb-3 p-3 bg-surfaceLight rounded-lg border border-border">
+            <div className="mb-2 p-2.5 bg-surfaceLight rounded-lg border border-border">
               <div className="space-y-2">
                 <Input
                   label="Label Name"
@@ -288,10 +313,10 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                   }}
                 />
                 <div>
-                  <label className="block text-xs font-medium text-textMuted mb-1.5 font-display">
+                  <label className="block text-xs font-medium text-textMuted mb-1 font-display">
                     Color
                   </label>
-                  <div className="flex gap-2 overflow-x-auto py-1 pb-2 scrollbar-thin">
+                  <div className="flex gap-1.5 overflow-x-auto py-1 pb-1.5 scrollbar-thin">
                     {LABEL_COLORS.map((color) => (
                       <button
                         key={color}
@@ -300,7 +325,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                         className={`rounded-lg transition-all border-2 shrink-0 ${
                           newLabelColor === color ? 'border-white scale-110' : 'border-transparent'
                         }`}
-                        style={{ backgroundColor: color, width: '22.4px', height: '22.4px' }}
+                        style={{ backgroundColor: color, width: '20px', height: '20px' }}
                       />
                     ))}
                   </div>
@@ -320,7 +345,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
             </div>
           )}
 
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto scrollbar-thin">
             {labels.map((label) => {
               const isEditing = editingLabelId === label.id;
               const isOwner = label.userId === user?.id;
@@ -341,7 +366,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                         autoFocus
                       />
                       <div className="flex gap-1 items-center">
-                        <div className="flex gap-1 overflow-x-auto py-0.5 scrollbar-thin">
+                        <div className="flex gap-0.5 overflow-x-auto py-0.5 scrollbar-thin max-w-[80px]">
                           {LABEL_COLORS.map((color) => (
                           <button
                             key={color}
@@ -350,7 +375,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                             className={`rounded border-2 transition-all shrink-0 ${
                               editLabelColor === color ? 'border-white scale-110' : 'border-transparent'
                             }`}
-                            style={{ backgroundColor: color, width: '14px', height: '14px' }}
+                            style={{ backgroundColor: color, width: '12px', height: '12px' }}
                             data-tooltip="Select color"
                           />
                           ))}
@@ -376,7 +401,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                       <button
                         type="button"
                         onClick={() => toggleLabel(label.id)}
-                        className={`px-2 py-1 rounded-md text-xs font-medium transition-all border-2 ${
+                        className={`px-2 py-0.5 rounded-md text-xs font-medium transition-all border-2 ${
                           selectedLabels.includes(label.id)
                             ? 'border-current'
                             : 'border-transparent hover:border-border/50'
@@ -426,20 +451,22 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
           </div>
         </div>
 
+        {/* Due Date Section */}
         <div>
-          <label className="block text-sm font-medium text-textMuted mb-1.5 font-display">
+          <label className="block text-xs font-medium text-textMuted mb-1 font-display">
             Due Date
           </label>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="input"
+            className="input py-2 text-sm"
             disabled={readOnly}
           />
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-3 border-t border-border">
           {!readOnly && (
             <Button
               variant="danger"
@@ -468,3 +495,4 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
     </Modal>
   );
 }
+

@@ -13,6 +13,23 @@ document.body.appendChild(tooltipContainer)
 
 let activeTooltip: HTMLElement | null = null
 let tooltipTimeout: ReturnType<typeof setTimeout> | null = null
+let tooltipDismissTimeout: ReturnType<typeof setTimeout> | null = null
+
+const dismissTooltip = () => {
+  if (activeTooltip) {
+    activeTooltip.style.opacity = '0'
+    setTimeout(() => {
+      if (activeTooltip && activeTooltip.parentNode) {
+        activeTooltip.parentNode.removeChild(activeTooltip)
+      }
+      activeTooltip = null
+    }, 200)
+  }
+  if (tooltipDismissTimeout) {
+    clearTimeout(tooltipDismissTimeout)
+    tooltipDismissTimeout = null
+  }
+}
 
 document.addEventListener('mouseenter', (e) => {
   const target = e.target
@@ -20,6 +37,12 @@ document.addEventListener('mouseenter', (e) => {
 
   const text = target.getAttribute('data-tooltip')
   if (!text) return
+
+  // Clear any existing dismiss timeout
+  if (tooltipDismissTimeout) {
+    clearTimeout(tooltipDismissTimeout)
+    tooltipDismissTimeout = null
+  }
 
   tooltipTimeout = setTimeout(() => {
     const tooltip = document.createElement('div')
@@ -65,6 +88,10 @@ document.addEventListener('mouseenter', (e) => {
     tooltip.style.transform = 'translateX(-50%)'
     requestAnimationFrame(() => {
       tooltip.style.opacity = '1'
+      // Auto-dismiss after 3 seconds
+      tooltipDismissTimeout = setTimeout(() => {
+        dismissTooltip()
+      }, 3000)
     })
   }, 500)
 }, true)
@@ -78,25 +105,9 @@ document.addEventListener('mouseleave', (e) => {
     tooltipTimeout = null
   }
 
-  if (activeTooltip) {
-    activeTooltip.style.opacity = '0'
-    setTimeout(() => {
-      if (activeTooltip && activeTooltip.parentNode) {
-        activeTooltip.parentNode.removeChild(activeTooltip)
-      }
-      activeTooltip = null
-    }, 200)
-  }
+  dismissTooltip()
 }, true)
 
 document.addEventListener('click', () => {
-  if (activeTooltip) {
-    activeTooltip.style.opacity = '0'
-    setTimeout(() => {
-      if (activeTooltip && activeTooltip.parentNode) {
-        activeTooltip.parentNode.removeChild(activeTooltip)
-      }
-      activeTooltip = null
-    }, 200)
-  }
+  dismissTooltip()
 }, true)

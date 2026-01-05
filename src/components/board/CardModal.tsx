@@ -232,7 +232,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
         </div>
 
         {/* Two Column Layout: Column and Priority */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1px_1fr] gap-3 items-start">
           <div>
             <label className="block text-xs font-medium text-textMuted mb-1 font-display">
               Column
@@ -250,6 +250,8 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
               ))}
             </select>
           </div>
+
+          <div className="hidden sm:block h-full border-l border-border"></div>
 
           <div>
             <label className="block text-xs font-medium text-textMuted mb-1 font-display">
@@ -280,10 +282,10 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
         </div>
 
         {/* Two Column Layout: Labels and Due Date */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1px_1fr] gap-3 items-start">
           {/* Labels Section */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="min-w-0">
+            <div className="relative mb-1">
               <label className="block text-xs font-medium text-textMuted font-display">
                 Labels
               </label>
@@ -291,19 +293,19 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                 <button
                   type="button"
                   onClick={() => setIsCreatingLabelModal(true)}
-                  className="text-xs text-accent hover:text-accent/80 transition-colors"
+                  className="absolute top-0 right-0 text-xs text-accent hover:text-accent/80 transition-colors"
                 >
                   + New Label
                 </button>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-x-auto scrollbar-thin scrollbar-x-auto">
+            <div className="flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent items-center w-full">
               {labels.map((label) => {
                 const isOwner = label.userId === user?.id;
                 
                 return (
-                  <div key={label.id} className="relative group">
+                  <div key={label.id} className="relative group shrink-0">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -324,7 +326,7 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                         {label.name}
                       </button>
                       {!readOnly && isOwner && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 bg-surfaceDark rounded-md px-0.5 ml-[-24px]">
                           <button
                             type="button"
                             onClick={() => handleStartEditLabel(label)}
@@ -335,16 +337,6 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLabel(label.id)}
-                            className="text-textMuted hover:text-danger p-0.5"
-                            data-tooltip="Delete label"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
                         </div>
                       )}
                     </div>
@@ -352,10 +344,12 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
                 );
               })}
               {labels.length === 0 && (
-                <p className="text-xs text-textMuted italic">No labels yet. Create one to get started.</p>
+                <p className="text-xs text-textMuted italic shrink-0">No labels yet. Create one to get started.</p>
               )}
             </div>
           </div>
+
+          <div className="hidden sm:block h-full border-l border-border"></div>
 
           {/* Due Date Section */}
           <div>
@@ -502,21 +496,37 @@ export function CardModal({ isOpen, onClose, card, labels: propLabels, readOnly 
               ))}
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditingLabelId(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveEditLabel}
-              disabled={!editLabelName.trim()}
-            >
-              Save
-            </Button>
+          <div className="flex gap-2 justify-between">
+            {editingLabelId && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  if (editingLabelId) {
+                    handleDeleteLabel(editingLabelId);
+                    setEditingLabelId(null);
+                  }
+                }}
+              >
+                Delete
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingLabelId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveEditLabel}
+                disabled={!editLabelName.trim()}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>
